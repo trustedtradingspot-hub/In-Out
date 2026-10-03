@@ -53,7 +53,7 @@ fun cycleLabel(m: YearMonth, day: Int): String {
     return "${f.format(s)} – ${f.format(e)} ${e.year}"
 }
 
-data class Item(val name: String, val amount: Double)
+data class Item(val name: String, val amount: Double, val date: String = LocalDate.now().toString())
 data class Fixed(val id: String, val name: String, val amount: Double, val from: String, val to: String?) {
     fun activeIn(m: String) = from <= m && (to == null || m <= to)
 }
@@ -66,11 +66,11 @@ class Store(private val ctx: Context) {
 
     fun expenses(m: String): List<Item> {
         val a = JSONArray(p.getString("exp_$m", "[]"))
-        return (0 until a.length()).map { val o = a.getJSONObject(it); Item(o.getString("n"), o.getDouble("a")) }
+        return (0 until a.length()).map { val o = a.getJSONObject(it); Item(o.getString("n"), o.getDouble("a"), o.optString("d", LocalDate.now().toString())) }
     }
     fun saveExpenses(m: String, l: List<Item>) {
         val a = JSONArray()
-        l.forEach { a.put(JSONObject().put("n", it.name).put("a", it.amount)) }
+        l.forEach { a.put(JSONObject().put("n", it.name).put("a", it.amount).put("d", it.date)) }
         p.edit().putString("exp_$m", a.toString()).apply()
         QuickAddWidget.refresh(ctx)
     }
@@ -337,6 +337,8 @@ fun App(
                         Column(Modifier.weight(1f)) {
                             Text("MyBudget+", fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0D4FA8), maxLines = 1)
                             Text("Il tuo budget, sempre sotto controllo", fontSize = 10.sp, color = Color(0xFF64748B), maxLines = 1)
+                            Text("${month.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.ITALY).replaceFirstChar { it.uppercase() }} ${month.year}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E5FBF))
+                            Text(cycleLabel(month, startDay), fontSize = 9.sp, color = Color(0xFF64748B))
                         }
                     }
                     Spacer(Modifier.height(7.dp))
@@ -448,28 +450,28 @@ fun App(
     }
 
     when (dialog) {
-        "day" -> InputDialog("Giorno di inizio ciclo", false, { dialog = null }, label = "Giorno (1-28)") { _, a ->
+        "day" -> InputDialog("Giorno di inizio ciclo", false, { dialog = null }, label = "Giorno (1-28)") { _, a, _ ->
             val d = a.toInt().coerceIn(1, 28)
             startDay = d; store.saveStartDay(d); month = currentCycle(d); dialog = null
         }
-        "actual" -> InputDialog("Stipendio effettivo di questo mese", false, { dialog = null }) { _, a ->
+        "actual" -> InputDialog("Stipendio effettivo di questo mese", false, { dialog = null }) { _, a, _ ->
             actualHist[ms] = a; store.saveActual(actualHist); dialog = null
         }
-        "salary" -> InputDialog("Stipendio previsto (minimo) da questo mese", false, { dialog = null }) { _, a ->
+        "salary" -> InputDialog("Stipendio previsto (minimo) da questo mese", false, { dialog = null }) { _, a, _ ->
             salaryHist[ms] = a; store.saveSalaryHist(salaryHist); dialog = null
         }
-        "fixed" -> InputDialog("Nuova spesa fissa da questo mese", true, { dialog = null }) { n, a ->
+        "fixed" -> InputDialog("Nuova spesa fissa da questo mese", true, { dialog = null }) { n, a, _ ->
             addFixed(n, a); dialog = null
         }
-        "exp" -> InputDialog("Nuova spesa", true, { dialog = null }) { n, a ->
-            expenses.add(0, Item(n, a)); store.saveExpenses(ms, expenses)
+        "exp" -> InputDialog("Nuova spesa", true, { dialog = null }) { n, a, date ->
+            expenses.add(0, Item(n, a, date)); store.saveExpenses(ms, expenses)
             val budgetBaseNow = salary + totalIncome
             val usedPctNow = if (budgetBaseNow > 0) (((totalFixed + expenses.sumOf { it.amount }) / budgetBaseNow) * 100).toInt() else 0
             if (usedPctNow >= 80) notifyBudgetAlert(store.context(), usedPctNow, budgetBaseNow - totalFixed - expenses.sumOf { it.amount })
             dialog = null
         }
-        "income" -> InputDialog("Nuovo introito", true, { dialog = null }, nameLabel = "Descrizione") { n, a ->
-            incomes.add(0, Item(n, a)); store.saveIncomes(ms, incomes); dialog = null
+        "income" -> InputDialog("Nuovo introito", true, { dialog = null }, nameLabel = "Descrizione") { n, a, date ->
+            incomes.add(0, Item(n, a, date)); store.saveIncomes(ms, incomes); dialog = null
         }
         "backup" -> BackupDialog(
             onExport = { onExportBackup(); dialog = null },
@@ -613,7 +615,10 @@ fun Row2(item: Item, amountColor: Color = Color.Unspecified, onClick: () -> Unit
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(Modifier.size(10.dp), shape = RoundedCornerShape(50), color = if (amountColor == Color.Unspecified) Color(0xFFCBD5E1) else Color(0xFF4ADE80)) {}
             Spacer(Modifier.width(12.dp))
-            Text(item.name, Modifier.weight(1f), fontSize = 15.sp)
+            Column(Modifier.weight(1f)) {
+                Text(item.name, fontSize = 15.sp)
+                Text(formatDisplayDate(item.date), fontSize = 10.sp, color = Color(0xFF64748B))
+            }
             Text((if (amountColor == Color.Unspecified) "−" else "+") + eur.format(item.amount), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (amountColor == Color.Unspecified) Color(0xFF111827) else amountColor)
         }
     }
@@ -658,6 +663,7 @@ fun ItemEditDialog(
 ) {
     var name by remember(item) { mutableStateOf(item.name) }
     var amount by remember(item) { mutableStateOf(item.amount.toString()) }
+    var date by remember(item) { mutableStateOf(item.date) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -665,22 +671,36 @@ fun ItemEditDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(name, { name = it }, label = { Text("Nome") }, singleLine = true)
                 OutlinedTextField(amount, { amount = it }, label = { Text("Importo €") }, singleLine = true)
+                OutlinedTextField(date, { date = it }, label = { Text("Data") }, singleLine = true, supportingText = { Text("Predefinita a oggi, modificabile") })
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 val a = amount.replace(',', '.').toDoubleOrNull()
-                if (a != null && name.isNotBlank()) onSave(Item(name.trim(), a))
+                if (a != null && name.isNotBlank()) onSave(Item(name.trim(), a, normalizeDate(date)))
             }) { Text("Salva") }
         },
         dismissButton = { TextButton(onClick = onDelete) { Text(deleteText) } }
     )
 }
 
+fun normalizeDate(raw: String): String {
+    val s = raw.trim()
+    return try {
+        if (s.length == 10 && s[2] == '/' && s[5] == '/') LocalDate.parse(s, DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString()
+        else LocalDate.parse(s).toString()
+    } catch (_: Exception) { LocalDate.now().toString() }
+}
+
+fun formatDisplayDate(raw: String): String = try {
+    LocalDate.parse(raw).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+} catch (_: Exception) { raw }
+
 @Composable
-fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: String = "Importo €", nameLabel: String = "Descrizione", onOk: (String, Double) -> Unit) {
+fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: String = "Importo €", nameLabel: String = "Descrizione", onOk: (String, Double, String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
+    var date by remember { mutableStateOf(LocalDate.now().toString()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -688,12 +708,13 @@ fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: S
             Column {
                 if (askName) OutlinedTextField(name, { name = it }, label = { Text(nameLabel) }, singleLine = true)
                 OutlinedTextField(amount, { amount = it }, label = { Text(label) }, singleLine = true)
+                OutlinedTextField(date, { date = it }, label = { Text("Data") }, singleLine = true, supportingText = { Text("Predefinita a oggi, modificabile") })
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 val a = amount.replace(',', '.').toDoubleOrNull()
-                if (a != null) onOk(name.ifBlank { "Spesa" }, a)
+                if (a != null) onOk(name.ifBlank { "Spesa" }, a, normalizeDate(date))
             }) { Text("OK") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } }
