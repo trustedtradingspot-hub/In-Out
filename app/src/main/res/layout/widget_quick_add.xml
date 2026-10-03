@@ -5,11 +5,11 @@
     android:layout_height="match_parent"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:padding="16dp"
-    android:background="#FFFFFFFF">
+    android:padding="12dp"
+    android:background="@drawable/widget_background">
     <ImageView
-        android:layout_width="38dp"
-        android:layout_height="38dp"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
         android:src="@drawable/ic_mybudget_wallet"
         android:contentDescription="MyBudget+" />
     <Space
@@ -25,7 +25,7 @@
             android:layout_height="wrap_content"
             android:text="MyBudget+"
             android:textColor="#2563EB"
-            android:textSize="13sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
         <TextView
             android:layout_width="wrap_content"
@@ -38,7 +38,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="#111827"
-            android:textSize="24sp"
+            android:textSize="22sp"
             android:textStyle="bold" />
     </LinearLayout>
     <TextView
