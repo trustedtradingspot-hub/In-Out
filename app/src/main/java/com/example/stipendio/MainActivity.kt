@@ -1,5 +1,8 @@
 package com.example.stipendio
 
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -7,6 +10,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -94,6 +99,7 @@ class Store(private val ctx: Context) {
         p.edit().putString("salary2", JSONObject(h).toString()).apply()
         QuickAddWidget.refresh(ctx)
     }
+    fun context(): Context = ctx
     fun startDay(): Int = p.getInt("start_day", 22)
     fun saveStartDay(d: Int) {
         p.edit().putInt("start_day", d).apply()
@@ -113,7 +119,7 @@ class Store(private val ctx: Context) {
 
     fun exportBackup(): String {
         val root = JSONObject()
-        root.put("app", "Stipendio")
+        root.put("app", "MyBudget+")
         root.put("formatVersion", 1)
         root.put("createdAt", System.currentTimeMillis())
         val data = JSONObject()
@@ -134,7 +140,7 @@ class Store(private val ctx: Context) {
 
     fun importBackup(json: String) {
         val root = JSONObject(json)
-        require(root.optString("app") == "Stipendio") { "File non riconosciuto" }
+        require(root.optString("app") == "Stipendio" || root.optString("app") == "MyBudget+") { "File non riconosciuto" }
         require(root.optInt("formatVersion", 0) == 1) { "Versione backup non supportata" }
         val data = root.getJSONObject("preferences")
         val editor = p.edit().clear()
@@ -158,6 +164,27 @@ class Store(private val ctx: Context) {
         check(editor.commit()) { "Impossibile salvare il backup" }
         QuickAddWidget.refresh(ctx)
     }
+}
+
+private const val BUDGET_CHANNEL = "budget_alerts"
+
+fun notifyBudgetAlert(ctx: Context, usedPercent: Int, remaining: Double) {
+    if (android.os.Build.VERSION.SDK_INT >= 33 &&
+        ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return
+    val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    if (android.os.Build.VERSION.SDK_INT >= 26) {
+        nm.createNotificationChannel(NotificationChannel(BUDGET_CHANNEL, "Avvisi MyBudget+", NotificationManager.IMPORTANCE_DEFAULT))
+    }
+    val text = "Hai utilizzato circa $usedPercent% del budget. Disponibilità: " + eur.format(remaining)
+    val n = NotificationCompat.Builder(ctx, BUDGET_CHANNEL)
+        .setSmallIcon(android.R.drawable.ic_dialog_alert)
+        .setContentTitle("MyBudget+ • Attenzione")
+        .setContentText(text)
+        .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        .setAutoCancel(true)
+        .build()
+    nm.notify((System.currentTimeMillis() and 0x7fffffff).toInt(), n)
 }
 
 class MainActivity : ComponentActivity() {
@@ -187,10 +214,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         store = Store(applicationContext)
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2001)
+        }
         quick = intent.getBooleanExtra("quick_add", false)
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme(background = Color.Black, surface = Color.Black)) {
-                Surface(Modifier.fillMaxSize()) {
+            MaterialTheme(colorScheme = lightColorScheme(
+                    primary = Color(0xFF2563EB),
+                    secondary = Color(0xFF60A5FA),
+                    background = Color(0xFFF7F9FC),
+                    surface = Color.White
+                )) {
+                Surface(Modifier.fillMaxSize(), color = Color(0xFFF7F9FC)) {
                     App(
                         store, quick,
                         onQuickConsumed = { quick = false; intent.removeExtra("quick_add") },
@@ -276,18 +312,28 @@ fun App(
     ) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { month = month.minusMonths(1) }) { Text("‹") }
-                Text(cycleLabel(month, startDay), Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                TextButton(onClick = { month = month.plusMonths(1) }) { Text("›") }
+                Column(Modifier.weight(1f)) {
+                    Text("MyBudget+", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                    Text(cycleLabel(month, startDay), fontSize = 13.sp, color = Color(0xFF64748B))
+                }
+                TextButton(onClick = { month = month.minusMonths(1) }) { Text("‹", fontSize = 24.sp) }
+                TextButton(onClick = { month = month.plusMonths(1) }) { Text("›", fontSize = 24.sp) }
                 TextButton(onClick = { dialog = "day" }) { Text("⚙") }
             }
         }
         item {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF0D0D0D))) {
+            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)) {
                 Column(Modifier.padding(20.dp)) {
-                    Text("Ti rimangono", fontSize = 14.sp)
+                    Text("DISPONIBILITÀ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
                     Text(eur.format(left), fontSize = 40.sp, fontWeight = FontWeight.Bold,
-                        color = if (left >= 0) Color(0xFF4CAF50) else Color(0xFFEF5350))
+                        color = if (left >= 0) Color(0xFF16A34A) else Color(0xFFDC2626))
+                    val budgetBase = salary + totalIncome
+                    val usedRatio = if (budgetBase > 0) ((totalFixed + totalVar) / budgetBase).coerceIn(0.0, 1.0) else 0.0
+                    val usedPct = (usedRatio * 100).toInt()
+                    Spacer(Modifier.height(10.dp))
+                    LinearProgressIndicator(progress = { usedRatio }, modifier = Modifier.fillMaxWidth().height(8.dp))
+                    Spacer(Modifier.height(4.dp))
+                    Text("$usedPct% del budget utilizzato", fontSize = 12.sp, color = if (usedPct >= 90) Color(0xFFDC2626) else if (usedPct >= 80) Color(0xFFD97706) else Color(0xFF64748B))
                     Spacer(Modifier.height(8.dp))
                     Text((if (actual != null) "Stipendio effettivo: " else "Stipendio previsto: ") + eur.format(salary))
                     if (actual != null) {
@@ -322,7 +368,7 @@ fun App(
         }
         item { Header("Spese fisse") { dialog = "fixed" } }
         items(activeFixed) { f -> Row2(Item(f.name, f.amount)) { editing = f } }
-        item { Text("Tocca una voce per modificarne nome/importo. Le spese fisse mantengono lo storico.", fontSize = 12.sp, color = Color.Gray) }
+        item { Text("Tocca una voce per modificarne nome/importo. Le spese fisse mantengono lo storico.", fontSize = 12.sp, color = Color(0xFF64748B)) }
     }
 
     when (dialog) {
@@ -340,7 +386,11 @@ fun App(
             addFixed(n, a); dialog = null
         }
         "exp" -> InputDialog("Nuova spesa", true, { dialog = null }) { n, a ->
-            expenses.add(0, Item(n, a)); store.saveExpenses(ms, expenses); dialog = null
+            expenses.add(0, Item(n, a)); store.saveExpenses(ms, expenses)
+            val budgetBaseNow = salary + totalIncome
+            val usedPctNow = if (budgetBaseNow > 0) (((totalFixed + expenses.sumOf { it.amount }) / budgetBaseNow) * 100).toInt() else 0
+            if (usedPctNow >= 80) notifyBudgetAlert(store.context(), usedPctNow, budgetBaseNow - totalFixed - expenses.sumOf { it.amount })
+            dialog = null
         }
         "income" -> InputDialog("Nuovo introito", true, { dialog = null }, nameLabel = "Descrizione") { n, a ->
             incomes.add(0, Item(n, a)); store.saveIncomes(ms, incomes); dialog = null
