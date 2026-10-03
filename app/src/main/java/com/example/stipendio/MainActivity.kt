@@ -715,6 +715,8 @@ fun ItemEditDialog(
     var name by remember(item) { mutableStateOf(item.name) }
     var amount by remember(item) { mutableStateOf(item.amount.toString()) }
     var date by remember(item) { mutableStateOf(item.date) }
+    var category by remember(item) { mutableStateOf(item.category) }
+    val categories = listOf("Alimentari", "Casa", "Auto", "Bollette", "Abbonamenti", "Svago", "Salute", "Shopping", "Altro")
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -723,12 +725,23 @@ fun ItemEditDialog(
                 OutlinedTextField(name, { name = it }, label = { Text("Nome") }, singleLine = true)
                 OutlinedTextField(amount, { amount = it }, label = { Text("Importo €") }, singleLine = true)
                 OutlinedTextField(date, { date = it }, label = { Text("Data") }, singleLine = true, supportingText = { Text("Predefinita a oggi, modificabile") })
+                Text("Categoria", fontSize = 12.sp, color = Color(0xFF64748B))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                    categories.take(5).forEach { c ->
+                        FilterChip(selected = category == c, onClick = { category = c }, label = { Text(c, fontSize = 10.sp) })
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                    categories.drop(5).forEach { c ->
+                        FilterChip(selected = category == c, onClick = { category = c }, label = { Text(c, fontSize = 10.sp) })
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 val a = amount.replace(',', '.').toDoubleOrNull()
-                if (a != null && name.isNotBlank()) onSave(Item(name.trim(), a, normalizeDate(date)))
+                if (a != null && name.isNotBlank()) onSave(Item(name.trim(), a, normalizeDate(date), category))
             }) { Text("Salva") }
         },
         dismissButton = { TextButton(onClick = onDelete) { Text(deleteText) } }
@@ -752,6 +765,8 @@ fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: S
     var name by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
+    var category by remember { mutableStateOf("Altro") }
+    val categories = listOf("Alimentari", "Casa", "Auto", "Bollette", "Abbonamenti", "Svago", "Salute", "Shopping", "Altro")
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -760,6 +775,19 @@ fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: S
                 if (askName) OutlinedTextField(name, { name = it }, label = { Text(nameLabel) }, singleLine = true)
                 OutlinedTextField(amount, { amount = it }, label = { Text(label) }, singleLine = true)
                 OutlinedTextField(date, { date = it }, label = { Text("Data") }, singleLine = true, supportingText = { Text("Predefinita a oggi, modificabile") })
+                if (askName) {
+                    Text("Categoria", fontSize = 12.sp, color = Color(0xFF64748B))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                        categories.take(5).forEach { c ->
+                            FilterChip(selected = category == c, onClick = { category = c }, label = { Text(c, fontSize = 10.sp) })
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                        categories.drop(5).forEach { c ->
+                            FilterChip(selected = category == c, onClick = { category = c }, label = { Text(c, fontSize = 10.sp) })
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
