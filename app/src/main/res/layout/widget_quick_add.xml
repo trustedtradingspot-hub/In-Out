@@ -7,48 +7,60 @@
     android:gravity="center_vertical"
     android:padding="12dp"
     android:background="@drawable/widget_background">
-    <ImageView
-        android:layout_width="42dp"
-        android:layout_height="42dp"
-        android:src="@drawable/ic_mybudget_wallet"
-        android:contentDescription="MyBudget+" />
-    <Space
-        android:layout_width="10dp"
-        android:layout_height="1dp" />
+
+    <TextView
+        android:id="@+id/widget_brand"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:gravity="center"
+        android:background="#1458C8"
+        android:text="+"
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:layout_marginStart="10dp"
         android:orientation="vertical">
+
         <TextView
+            android:id="@+id/widget_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="MyBudget+"
-            android:textColor="#2563EB"
-            android:textSize="14sp"
+            android:textColor="#0D4FA8"
+            android:textSize="15sp"
             android:textStyle="bold" />
+
         <TextView
+            android:id="@+id/widget_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/widget_subtitle"
             android:text="Disponibilità"
             android:textColor="#64748B"
             android:textSize="11sp" />
+
         <TextView
             android:id="@+id/amount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#111827"
-            android:textSize="22sp"
+            android:text="0,00 €"
+            android:textColor="#123B6D"
+            android:textSize="20sp"
             android:textStyle="bold" />
     </LinearLayout>
+
     <TextView
+        android:id="@+id/widget_action"
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:gravity="center"
         android:background="#E8F0FE"
         android:text="+"
-        android:textColor="#2563EB"
-        android:textSize="25sp"
+        android:textColor="#1458C8"
+        android:textSize="24sp"
         android:textStyle="bold" />
 </LinearLayout>
