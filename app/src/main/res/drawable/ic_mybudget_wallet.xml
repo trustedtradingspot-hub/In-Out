@@ -4,19 +4,45 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
+
+    <!-- Rounded blue square, matching the supplied reference -->
     <path
-        android:fillColor="#2563EB"
-        android:pathData="M10,2h28a8,8 0,0 1,8 8v28a8,8 0,0 1,-8 8H10a8,8 0,0 1,-8 -8V10a8,8 0,0 1,8 -8z"/>
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M12,17h24a4,4 0,0 1,4 4v12a4,4 0,0 1,-4 4H12a4,4 0,0 1,-4 -4V21a4,4 0,0 1,4 -4z"/>
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M12,17l17,-8.5a3,3 0,0 1,4 1.5l1.6,3.3L16,24z"/>
-    <path
-        android:fillColor="#2563EB"
-        android:pathData="M31,22h6a4,4 0,0 1,0 8h-6a4,4 0,0 1,0 -8z"/>
+        android:fillColor="#1458C8"
+        android:pathData="M10,1.5h28c5.8,0 8.5,2.7 8.5,8.5v28c0,5.8 -2.7,8.5 -8.5,8.5H10c-5.8,0 -8.5,-2.7 -8.5,-8.5V10c0,-5.8 2.7,-8.5 8.5,-8.5z"/>
+
+    <!-- Upper wallet flap: long, clean diagonal line as in the reference -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M34,24h1.5v1.5H37v1.5h-1.5v1.5H34V27h-1.5v-1.5H34z"/>
+        android:pathData="M9,19.5 L27.5,9.3 C30.1,7.9 32.2,9.2 32.8,11.7 L33.4,14.2 L13.2,20.1 Z"/>
+
+    <!-- Front/top flap -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M10.5,19.5 L33.2,13.7 C36.2,13 38.1,15 38.3,18.9 L38.4,19.8 Z"/>
+
+    <!-- Main wallet body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M11.5,18.8h25.2c3.1,0 5.3,2.2 5.3,5.3v10.1c0,3.1 -2.2,5.3 -5.3,5.3H11.5c-3.1,0 -5.3,-2.2 -5.3,-5.3V24.1c0,-3.1 2.2,-5.3 5.3,-5.3z"/>
+
+    <!-- Blue opening line -->
+    <path
+        android:fillColor="#1458C8"
+        android:pathData="M11,18.5h26.5c0.8,0 1.4,0.6 1.4,1.3s-0.6,1.3 -1.4,1.3H11c-0.8,0 -1.4,-0.6 -1.4,-1.3s0.6,-1.3 1.4,-1.3z"/>
+
+    <!-- Circular wallet clasp -->
+    <path
+        android:fillColor="#1458C8"
+        android:pathData="M34.2,25.1a4.3,4.3 0,1 0,0 8.6a4.3,4.3 0,1 0,0 -8.6z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34.2,27.1a2.3,2.3 0,1 0,0 4.6a2.3,2.3 0,1 0,0 -4.6z"/>
+
+    <!-- Clearly visible + badge in the upper-right corner -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38.7,2.8a5.5,5.5 0,1 0,0 11a5.5,5.5 0,1 0,0 -11z"/>
+    <path
+        android:fillColor="#1458C8"
+        android:pathData="M37.8,5.7h1.8v2h2v1.8h-2v2h-1.8v-2h-2V7.7h2z"/>
 </vector>
