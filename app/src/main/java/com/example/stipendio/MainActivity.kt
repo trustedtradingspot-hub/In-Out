@@ -491,28 +491,28 @@ fun App(
     }
 
     when (dialog) {
-        "day" -> InputDialog("Giorno di inizio ciclo", false, { dialog = null }, label = "Giorno (1-28)") { _, a, _ ->
+        "day" -> InputDialog("Giorno di inizio ciclo", false, { dialog = null }, label = "Giorno (1-28)") { _, a, _, _ ->
             val d = a.toInt().coerceIn(1, 28)
             startDay = d; store.saveStartDay(d); month = currentCycle(d); dialog = null
         }
-        "actual" -> InputDialog("Stipendio effettivo di questo mese", false, { dialog = null }) { _, a, _ ->
+        "actual" -> InputDialog("Stipendio effettivo di questo mese", false, { dialog = null }) { _, a, _, _ ->
             actualHist[ms] = a; store.saveActual(actualHist); dialog = null
         }
-        "salary" -> InputDialog("Stipendio previsto (minimo) da questo mese", false, { dialog = null }) { _, a, _ ->
+        "salary" -> InputDialog("Stipendio previsto (minimo) da questo mese", false, { dialog = null }) { _, a, _, _ ->
             salaryHist[ms] = a; store.saveSalaryHist(salaryHist); dialog = null
         }
-        "fixed" -> InputDialog("Nuova spesa fissa da questo mese", true, { dialog = null }) { n, a, _ ->
+        "fixed" -> InputDialog("Nuova spesa fissa da questo mese", true, { dialog = null }) { n, a, _, _ ->
             addFixed(n, a); dialog = null
         }
-        "exp" -> InputDialog("Nuova spesa", true, { dialog = null }) { n, a, date ->
-            expenses.add(0, Item(n, a, date)); store.saveExpenses(ms, expenses)
+        "exp" -> InputDialog("Nuova spesa", true, { dialog = null }) { n, a, date, category ->
+            expenses.add(0, Item(n, a, date, category)); store.saveExpenses(ms, expenses)
             val budgetBaseNow = salary + totalIncome
             val usedPctNow = if (budgetBaseNow > 0) (((totalFixed + expenses.sumOf { it.amount }) / budgetBaseNow) * 100).toInt() else 0
             if (usedPctNow >= 80) notifyBudgetAlert(store.context(), usedPctNow, budgetBaseNow - totalFixed - expenses.sumOf { it.amount })
             dialog = null
         }
-        "income" -> InputDialog("Nuovo introito", true, { dialog = null }, nameLabel = "Descrizione") { n, a, date ->
-            incomes.add(0, Item(n, a, date)); store.saveIncomes(ms, incomes); dialog = null
+        "income" -> InputDialog("Nuovo introito", true, { dialog = null }, nameLabel = "Descrizione") { n, a, date, category ->
+            incomes.add(0, Item(n, a, date, category)); store.saveIncomes(ms, incomes); dialog = null
         }
         "backup" -> BackupDialog(
             onExport = { onExportBackup(); dialog = null },
@@ -532,6 +532,7 @@ fun App(
             fixed = totalFixed,
             variable = totalVar,
             remaining = left,
+            expenses = expenses,
             onDismiss = { dialog = null }
         )
     }
@@ -761,7 +762,7 @@ fun formatDisplayDate(raw: String): String = try {
 } catch (_: Exception) { raw }
 
 @Composable
-fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: String = "Importo €", nameLabel: String = "Descrizione", onOk: (String, Double, String) -> Unit) {
+fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: String = "Importo €", nameLabel: String = "Descrizione", onOk: (String, Double, String, String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
@@ -793,7 +794,7 @@ fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: S
         confirmButton = {
             TextButton(onClick = {
                 val a = amount.replace(',', '.').toDoubleOrNull()
-                if (a != null) onOk(name.ifBlank { "Spesa" }, a, normalizeDate(date))
+                if (a != null) onOk(name.ifBlank { "Spesa" }, a, normalizeDate(date), category)
             }) { Text("OK") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } }
@@ -835,9 +836,14 @@ fun AnalysisDialog(
     fixed: Double,
     variable: Double,
     remaining: Double,
+    expenses: List<Item>,
     onDismiss: () -> Unit
 ) {
     val base = salary + income
+    val categoryTotals = expenses.groupBy { it.category.ifBlank { "Altro" } }
+        .mapValues { (_, items) -> items.sumOf { it.amount } }
+        .toList()
+        .sortedByDescending { it.second }
     val used = if (base > 0) ((fixed + variable) / base).coerceIn(0.0, 1.0) else 0.0
     val pct = (used * 100).toInt()
     AlertDialog(
@@ -861,6 +867,16 @@ fun AnalysisDialog(
                 Spacer(Modifier.height(10.dp))
                 Text("Spese totali: ${eur.format(fixed + variable)}", fontWeight = FontWeight.SemiBold)
                 Text("Disponibilità: ${eur.format(remaining)}", color = if (remaining >= 0) Color(0xFF16A34A) else Color(0xFFDC2626))
+                if (categoryTotals.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text("Spese variabili per categoria", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+                    categoryTotals.forEach { (category, total) ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                            Text(category, Modifier.weight(1f), fontSize = 12.sp, color = Color(0xFF475569))
+                            Text(eur.format(total), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } }
