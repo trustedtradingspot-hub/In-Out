@@ -228,10 +228,10 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = lightColorScheme(
                     primary = Color(0xFF2563EB),
                     secondary = Color(0xFF60A5FA),
-                    background = Color(0xFF0B5FC7),
+                    background = Color(0xFFEAF2FF),
                     surface = Color.White
                 )) {
-                Surface(Modifier.fillMaxSize(), color = Color(0xFF0B5FC7)) {
+                Surface(Modifier.fillMaxSize(), color = Color(0xFFEAF2FF)) {
                     App(
                         store, quick,
                         onQuickConsumed = { quick = false; intent.removeExtra("quick_add") },
@@ -313,7 +313,7 @@ fun App(
     }
 
     Scaffold(
-        containerColor = Color(0xFF0B5FC7),
+        containerColor = Color(0xFFEAF2FF),
         bottomBar = {
             NavigationBar(containerColor = Color.White) {
                 NavigationBarItem(selected = selectedNav == 0, onClick = { selectedNav = 0 }, icon = { Text("⌂", fontSize = 20.sp) }, label = { Text("Home") })
@@ -328,23 +328,28 @@ fun App(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
-            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 2.dp) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Image(painter = painterResource(R.drawable.ic_mybudget_wallet), contentDescription = "Logo MyBudget+", modifier = Modifier.size(42.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("MyBudget+", fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0D4FA8), maxLines = 1, softWrap = false)
-                        Text("Il tuo budget, sempre sotto controllo", fontSize = 10.sp, color = Color(0xFF64748B), maxLines = 1, softWrap = false)
-                    }
-                    Surface(shape = RoundedCornerShape(13.dp), color = Color(0xFFF4F7FC)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = { month = month.minusMonths(1) }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("‹", fontSize = 21.sp) }
-                            TextButton(onClick = { month = month.plusMonths(1) }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("›", fontSize = 21.sp) }
+            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 3.dp, border = BorderStroke(1.dp, Color(0xFFD7E3F2))) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(painter = painterResource(R.drawable.ic_mybudget_wallet), contentDescription = "Logo MyBudget+", modifier = Modifier.size(44.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("MyBudget+", fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0D4FA8), maxLines = 1)
+                            Text("Il tuo budget, sempre sotto controllo", fontSize = 10.sp, color = Color(0xFF64748B), maxLines = 1)
                         }
                     }
-                    Spacer(Modifier.width(4.dp))
-                    Surface(shape = RoundedCornerShape(13.dp), color = Color(0xFFF4F7FC)) {
-                        TextButton(onClick = { dialog = "day" }, contentPadding = PaddingValues(10.dp)) { Text("⚙", fontSize = 17.sp) }
+                    Spacer(Modifier.height(7.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                        Surface(shape = RoundedCornerShape(13.dp), color = Color(0xFFF4F7FC), border = BorderStroke(1.dp, Color(0xFFE0E8F3))) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = { month = month.minusMonths(1) }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 0.dp)) { Text("‹", fontSize = 21.sp) }
+                                TextButton(onClick = { month = month.plusMonths(1) }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 0.dp)) { Text("›", fontSize = 21.sp) }
+                            }
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Surface(shape = RoundedCornerShape(13.dp), color = Color(0xFFF4F7FC), border = BorderStroke(1.dp, Color(0xFFE0E8F3))) {
+                            TextButton(onClick = { dialog = "day" }, contentPadding = PaddingValues(horizontal = 11.dp, vertical = 0.dp)) { Text("⚙", fontSize = 17.sp) }
+                        }
                     }
                 }
             }
@@ -354,7 +359,7 @@ fun App(
             val usedRatio = if (budgetBase > 0) ((totalFixed + totalVar) / budgetBase).coerceIn(0.0, 1.0) else 0.0
             val usedPct = (usedRatio * 100).toInt()
             val progressColor = if (usedPct >= 90) Color(0xFFEF4444) else if (usedPct >= 80) Color(0xFFF59E0B) else Color(0xFF1683E8)
-            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), color = Color(0xFF0B5FC7), shadowElevation = 5.dp) {
+            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), color = Color(0xFF0B5FC7), shadowElevation = 7.dp, border = BorderStroke(1.dp, Color(0xFF3D8BE8))) {
                 Column(Modifier.padding(14.dp)) {
                     Text("Buongiorno!", color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
                     Text("Il tuo budget, in sintesi", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -397,13 +402,34 @@ fun App(
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { dialog = "salary" }, Modifier.weight(1f)) { Text("Stipendio previsto", fontSize = 12.sp) }
-                OutlinedButton(onClick = { dialog = "actual" }, Modifier.weight(1f)) { Text("Stipendio arrivato", fontSize = 12.sp) }
+                Button(
+                    onClick = { dialog = "salary" },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF0D5FC7)),
+                    border = BorderStroke(1.dp, Color(0xFFD0DDF0)),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                ) { Text("Stipendio previsto", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+                Button(
+                    onClick = { dialog = "actual" },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF0D5FC7)),
+                    border = BorderStroke(1.dp, Color(0xFFD0DDF0)),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                ) { Text("Stipendio arrivato", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
             }
         }
         item {
-            OutlinedButton(onClick = { dialog = "backup" }, Modifier.fillMaxWidth()) {
-                Text("Backup e ripristino")
+            Button(
+                onClick = { dialog = "backup" },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF0D5FC7)),
+                border = BorderStroke(1.dp, Color(0xFFD0DDF0)),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+            ) {
+                Text("Backup e ripristino", fontWeight = FontWeight.SemiBold)
             }
         }
         item { Header("Introiti extra") { dialog = "income" } }
