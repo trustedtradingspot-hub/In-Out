@@ -228,10 +228,10 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = lightColorScheme(
                     primary = Color(0xFF2563EB),
                     secondary = Color(0xFF60A5FA),
-                    background = Color(0xFFF7F9FC),
+                    background = Color(0xFFEAF2FF),
                     surface = Color.White
                 )) {
-                Surface(Modifier.fillMaxSize(), color = Color(0xFFF7F9FC)) {
+                Surface(Modifier.fillMaxSize(), color = Color(0xFFEAF2FF)) {
                     App(
                         store, quick,
                         onQuickConsumed = { quick = false; intent.removeExtra("quick_add") },
@@ -313,7 +313,7 @@ fun App(
     }
 
     Scaffold(
-        containerColor = Color(0xFFF6F8FC),
+        containerColor = Color(0xFFEAF2FF),
         bottomBar = {
             NavigationBar(containerColor = Color.White) {
                 NavigationBarItem(selected = selectedNav == 0, onClick = { selectedNav = 0 }, icon = { Text("⌂", fontSize = 20.sp) }, label = { Text("Home") })
@@ -330,16 +330,16 @@ fun App(
         item {
             Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 2.dp) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Image(painter = painterResource(R.drawable.ic_mybudget_wallet), contentDescription = "Logo MyBudget+", modifier = Modifier.size(44.dp))
+                    Image(painter = painterResource(R.drawable.ic_mybudget_wallet), contentDescription = "Logo MyBudget+", modifier = Modifier.size(42.dp))
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("MyBudget+", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0D4FA8))
-                        Text("Il tuo budget, sempre sotto controllo", fontSize = 11.sp, color = Color(0xFF64748B))
+                        Text("MyBudget+", fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0D4FA8), maxLines = 1, softWrap = false)
+                        Text("Il tuo budget, sempre sotto controllo", fontSize = 10.sp, color = Color(0xFF64748B), maxLines = 1, softWrap = false)
                     }
                     Surface(shape = RoundedCornerShape(13.dp), color = Color(0xFFF4F7FC)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = { month = month.minusMonths(1) }, contentPadding = PaddingValues(horizontal = 7.dp)) { Text("‹", fontSize = 22.sp) }
-                            TextButton(onClick = { month = month.plusMonths(1) }, contentPadding = PaddingValues(horizontal = 7.dp)) { Text("›", fontSize = 22.sp) }
+                            TextButton(onClick = { month = month.minusMonths(1) }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("‹", fontSize = 21.sp) }
+                            TextButton(onClick = { month = month.plusMonths(1) }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("›", fontSize = 21.sp) }
                         }
                     }
                     Spacer(Modifier.width(4.dp))
