@@ -3,6 +3,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:allowBackup="true"
+        android:icon="@drawable/ic_mybudget_wallet"
+        android:roundIcon="@drawable/ic_mybudget_wallet"
         android:label="MyBudget+"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyBudget">
