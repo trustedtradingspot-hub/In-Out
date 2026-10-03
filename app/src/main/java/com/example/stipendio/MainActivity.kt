@@ -14,6 +14,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -22,9 +24,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.NumberFormat
@@ -311,39 +315,60 @@ fun App(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = RoundedCornerShape(15.dp), color = Color.White, shadowElevation = 2.dp, modifier = Modifier.size(52.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Image(painter = painterResource(R.drawable.ic_mybudget_wallet), contentDescription = "Logo MyBudget+", modifier = Modifier.size(42.dp))
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("MyBudget+", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                    Text("MyBudget+", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
                     Text(cycleLabel(month, startDay), fontSize = 13.sp, color = Color(0xFF64748B))
                 }
-                TextButton(onClick = { month = month.minusMonths(1) }) { Text("‹", fontSize = 24.sp) }
-                TextButton(onClick = { month = month.plusMonths(1) }) { Text("›", fontSize = 24.sp) }
-                TextButton(onClick = { dialog = "day" }) { Text("⚙") }
+                Surface(shape = RoundedCornerShape(14.dp), color = Color.White, shadowElevation = 1.dp) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { month = month.minusMonths(1) }) { Text("‹", fontSize = 24.sp) }
+                        TextButton(onClick = { month = month.plusMonths(1) }) { Text("›", fontSize = 24.sp) }
+                    }
+                }
+                Spacer(Modifier.width(4.dp))
+                Surface(shape = RoundedCornerShape(14.dp), color = Color.White, shadowElevation = 1.dp) {
+                    TextButton(onClick = { dialog = "day" }) { Text("⚙", fontSize = 18.sp) }
+                }
             }
         }
         item {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)) {
-                Column(Modifier.padding(20.dp)) {
-                    Text("DISPONIBILITÀ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
-                    Text(eur.format(left), fontSize = 40.sp, fontWeight = FontWeight.Bold,
-                        color = if (left >= 0) Color(0xFF16A34A) else Color(0xFFDC2626))
-                    val budgetBase = salary + totalIncome
-                    val usedRatio = if (budgetBase > 0) ((totalFixed + totalVar) / budgetBase).coerceIn(0.0, 1.0) else 0.0
-                    val usedPct = (usedRatio * 100).toInt()
-                    Spacer(Modifier.height(10.dp))
-                    LinearProgressIndicator(progress = { usedRatio.toFloat() }, modifier = Modifier.fillMaxWidth().height(8.dp))
-                    Spacer(Modifier.height(4.dp))
-                    Text("$usedPct% del budget utilizzato", fontSize = 12.sp, color = if (usedPct >= 90) Color(0xFFDC2626) else if (usedPct >= 80) Color(0xFFD97706) else Color(0xFF64748B))
-                    Spacer(Modifier.height(8.dp))
-                    Text((if (actual != null) "Stipendio effettivo: " else "Stipendio previsto: ") + eur.format(salary))
+            val budgetBase = salary + totalIncome
+            val usedRatio = if (budgetBase > 0) ((totalFixed + totalVar) / budgetBase).coerceIn(0.0, 1.0) else 0.0
+            val usedPct = (usedRatio * 100).toInt()
+            val progressColor = if (usedPct >= 90) Color(0xFFEF4444) else if (usedPct >= 80) Color(0xFFF59E0B) else Color(0xFF2563EB)
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)) {
+                Column(Modifier.background(Brush.verticalGradient(listOf(Color.White, Color(0xFFF4F8FF)))).padding(22.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("DISPONIBILITÀ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
+                            Text(eur.format(left), fontSize = 42.sp, fontWeight = FontWeight.ExtraBold, color = if (left >= 0) Color(0xFF16A34A) else Color(0xFFDC2626))
+                        }
+                        Surface(shape = RoundedCornerShape(14.dp), color = if (usedPct >= 80) Color(0xFFFFF3E0) else Color(0xFFEAF2FF)) {
+                            Text(usedPct.toString() + "%", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = progressColor)
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    LinearProgressIndicator(progress = { usedRatio.toFloat() }, modifier = Modifier.fillMaxWidth().height(9.dp), color = progressColor, trackColor = Color(0xFFE6EAF2))
+                    Spacer(Modifier.height(5.dp))
+                    Text(if (usedPct >= 80) "Attenzione: hai superato l'80% del budget" else usedPct.toString() + "% del budget utilizzato", fontSize = 12.sp, fontWeight = if (usedPct >= 80) FontWeight.SemiBold else FontWeight.Normal, color = if (usedPct >= 80) progressColor else Color(0xFF64748B))
+                    Spacer(Modifier.height(14.dp))
+                    HorizontalDivider(color = Color(0xFFE8ECF3))
+                    Spacer(Modifier.height(12.dp))
+                    SummaryLine("Stipendio effettivo", eur.format(salary), Color(0xFF111827))
                     if (actual != null) {
                         val d = actual - planned
-                        Text("Previsto ${eur.format(planned)} → ${if (d >= 0) "+" else "−"}${eur.format(kotlin.math.abs(d))}",
-                            fontSize = 12.sp, color = if (d >= 0) Color(0xFF4CAF50) else Color(0xFFEF5350))
+                        SummaryLine("Differenza dal previsto", (if (d >= 0) "+" else "−") + eur.format(kotlin.math.abs(d)), if (d >= 0) Color(0xFF16A34A) else Color(0xFFDC2626))
                     }
-                    Text("Introiti extra: +${eur.format(totalIncome)}")
-                    Text("Spese fisse: −${eur.format(totalFixed)}")
-                    Text("Spese variabili: −${eur.format(totalVar)}")
+                    SummaryLine("Introiti extra", "+" + eur.format(totalIncome), Color(0xFF16A34A))
+                    SummaryLine("Spese fisse", "−" + eur.format(totalFixed), Color(0xFF374151))
+                    SummaryLine("Spese variabili", "−" + eur.format(totalVar), Color(0xFF374151))
                 }
             }
         }
@@ -510,20 +535,29 @@ fun BackupDialog(onExport: () -> Unit, onImport: () -> Unit, onDismiss: () -> Un
 
 @Composable
 fun Header(title: String, onAdd: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.Medium)
-        Button(onClick = onAdd) { Text("+ Aggiungi") }
+    Row(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1F2937))
+        Button(onClick = onAdd, shape = RoundedCornerShape(22.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) { Text("+ Aggiungi", fontWeight = FontWeight.SemiBold) }
     }
 }
 
 @Composable
 fun Row2(item: Item, amountColor: Color = Color.Unspecified, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 8.dp)) {
-        Text(item.name, Modifier.weight(1f))
-        Text(
-            (if (amountColor == Color.Unspecified) "" else "+") + eur.format(item.amount),
-            color = amountColor
-        )
+    Card(Modifier.fillMaxWidth().clickable { onClick() }, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(Modifier.size(10.dp), shape = RoundedCornerShape(50), color = if (amountColor == Color.Unspecified) Color(0xFFCBD5E1) else Color(0xFF4ADE80)) {}
+            Spacer(Modifier.width(12.dp))
+            Text(item.name, Modifier.weight(1f), fontSize = 15.sp)
+            Text((if (amountColor == Color.Unspecified) "−" else "+") + eur.format(item.amount), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (amountColor == Color.Unspecified) Color(0xFF111827) else amountColor)
+        }
+    }
+}
+
+@Composable
+fun SummaryLine(label: String, value: String, valueColor: Color) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f), fontSize = 14.sp, color = Color(0xFF64748B))
+        Text(value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = valueColor)
     }
 }
 
