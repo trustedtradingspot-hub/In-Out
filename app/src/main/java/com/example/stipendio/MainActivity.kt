@@ -315,6 +315,11 @@ fun App(
     val totalVar = expenses.sumOf { it.amount }
     val totalIncome = incomes.sumOf { it.amount }
     val left = salary + totalIncome - totalFixed - totalVar
+    val daysLeft = daysRemainingInCycle(month, startDay)
+    val elapsedDays = cycleElapsedDays(month, startDay)
+    val dailyBudget = if (daysLeft > 0) (left / daysLeft).coerceAtLeast(0.0) else 0.0
+    val avgDailyVariable = if (elapsedDays > 0) totalVar / elapsedDays else 0.0
+    val forecast = left - avgDailyVariable * daysLeft
 
     fun addFixed(n: String, a: Double) {
         fixedAll.add(Fixed(UUID.randomUUID().toString(), n, a, ms, null)); store.saveFixed(fixedAll)
@@ -405,6 +410,21 @@ fun App(
                             Text(if (usedPct >= 80) "Attenzione: hai superato l'80% del budget" else "$usedPct% dello stipendio mensile", fontSize = 11.sp, fontWeight = if (usedPct >= 80) FontWeight.SemiBold else FontWeight.Normal, color = if (usedPct >= 80) progressColor else Color(0xFF64748B))
                         }
                     }
+                }
+            }
+        }
+        item {
+            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 2.dp, border = BorderStroke(1.dp, Color(0xFFD7E3F2))) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("IL TUO RITMO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        MiniKpi("Al giorno", eur.format(dailyBudget), Color(0xFF2563EB), Modifier.weight(1f))
+                        MiniKpi("Giorni", "" + daysLeft, Color(0xFF16A34A), Modifier.weight(1f))
+                        MiniKpi("Previsione", eur.format(forecast), if (forecast >= 0) Color(0xFF16A34A) else Color(0xFFDC2626), Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(7.dp))
+                    Text(if (forecast >= 0) "Ritmo attuale: previsione positiva a fine periodo." else "Attenzione: con il ritmo attuale la previsione è negativa.", fontSize = 11.sp, color = if (forecast >= 0) Color(0xFF475569) else Color(0xFFDC2626))
                 }
             }
         }
@@ -641,6 +661,16 @@ fun Row2(item: Item, amountColor: Color = Color.Unspecified, onClick: () -> Unit
                 Text(formatDisplayDate(item.date), fontSize = 10.sp, color = Color(0xFF64748B))
             }
             Text((if (amountColor == Color.Unspecified) "−" else "+") + eur.format(item.amount), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (amountColor == Color.Unspecified) Color(0xFF111827) else amountColor)
+        }
+    }
+}
+
+@Composable
+fun MiniKpi(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+    Surface(modifier, shape = RoundedCornerShape(14.dp), color = Color(0xFFF6F9FD), border = BorderStroke(1.dp, Color(0xFFE1E9F4))) {
+        Column(Modifier.padding(9.dp)) {
+            Text(label, fontSize = 9.sp, color = Color(0xFF64748B), maxLines = 1)
+            Text(value, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = color, maxLines = 1)
         }
     }
 }
