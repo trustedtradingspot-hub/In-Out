@@ -53,7 +53,28 @@ fun cycleLabel(m: YearMonth, day: Int): String {
     return "${f.format(s)} – ${f.format(e)} ${e.year}"
 }
 
-data class Item(val name: String, val amount: Double, val date: String = LocalDate.now().toString())
+data class Item(val name: String, val amount: Double, val date: String = LocalDate.now().toString(), val category: String = "Altro")
+fun cycleEnd(m: YearMonth, day: Int): LocalDate =
+    m.plusMonths(1).atDay(day.coerceIn(1, 28)).minusDays(1)
+
+fun daysRemainingInCycle(m: YearMonth, day: Int): Long {
+    val today = LocalDate.now()
+    val start = m.atDay(day.coerceIn(1, 28))
+    val end = cycleEnd(m, day)
+    return when {
+        today < start -> java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1
+        today > end -> 0
+        else -> java.time.temporal.ChronoUnit.DAYS.between(today, end) + 1
+    }
+}
+
+fun cycleElapsedDays(m: YearMonth, day: Int): Long {
+    val today = LocalDate.now()
+    val start = m.atDay(day.coerceIn(1, 28))
+    val end = cycleEnd(m, day)
+    return if (today <= start) 1 else java.time.temporal.ChronoUnit.DAYS.between(start, minOf(today, end)) + 1
+}
+
 data class Fixed(val id: String, val name: String, val amount: Double, val from: String, val to: String?) {
     fun activeIn(m: String) = from <= m && (to == null || m <= to)
 }
@@ -66,21 +87,21 @@ class Store(private val ctx: Context) {
 
     fun expenses(m: String): List<Item> {
         val a = JSONArray(p.getString("exp_$m", "[]"))
-        return (0 until a.length()).map { val o = a.getJSONObject(it); Item(o.getString("n"), o.getDouble("a"), o.optString("d", LocalDate.now().toString())) }
+        return (0 until a.length()).map { val o = a.getJSONObject(it); Item(o.getString("n"), o.getDouble("a"), o.optString("d", LocalDate.now().toString()), o.optString("c", "Altro")) }
     }
     fun saveExpenses(m: String, l: List<Item>) {
         val a = JSONArray()
-        l.forEach { a.put(JSONObject().put("n", it.name).put("a", it.amount).put("d", it.date)) }
+        l.forEach { a.put(JSONObject().put("n", it.name).put("a", it.amount).put("d", it.date).put("c", it.category)) }
         p.edit().putString("exp_$m", a.toString()).apply()
         QuickAddWidget.refresh(ctx)
     }
     fun incomes(m: String): List<Item> {
         val a = JSONArray(p.getString("inc_$m", "[]"))
-        return (0 until a.length()).map { val o = a.getJSONObject(it); Item(o.getString("n"), o.getDouble("a")) }
+        return (0 until a.length()).map { val o = a.getJSONObject(it); Item(o.getString("n"), o.getDouble("a"), o.optString("d", LocalDate.now().toString()), o.optString("c", "Altro")) }
     }
     fun saveIncomes(m: String, l: List<Item>) {
         val a = JSONArray()
-        l.forEach { a.put(JSONObject().put("n", it.name).put("a", it.amount)) }
+        l.forEach { a.put(JSONObject().put("n", it.name).put("a", it.amount).put("d", it.date).put("c", it.category)) }
         p.edit().putString("inc_$m", a.toString()).apply()
         QuickAddWidget.refresh(ctx)
     }
