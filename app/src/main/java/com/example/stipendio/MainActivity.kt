@@ -75,7 +75,7 @@ fun cycleElapsedDays(m: YearMonth, day: Int): Long {
     return if (today <= start) 1 else java.time.temporal.ChronoUnit.DAYS.between(start, minOf(today, end)) + 1
 }
 
-data class Fixed(val id: String, val name: String, val amount: Double, val from: String, val to: String?) {
+data class Fixed(val id: String, val name: String, val amount: Double, val from: String, val to: String?, val category: String = "Altro") {
     fun activeIn(m: String) = from <= m && (to == null || m <= to)
 }
 
@@ -109,12 +109,12 @@ class Store(private val ctx: Context) {
         val a = JSONArray(p.getString("fixed2", "[]"))
         return (0 until a.length()).map {
             val o = a.getJSONObject(it)
-            Fixed(o.getString("id"), o.getString("n"), o.getDouble("a"), o.getString("f"), o.optString("t", "").ifEmpty { null })
+            Fixed(o.getString("id"), o.getString("n"), o.getDouble("a"), o.getString("f"), o.optString("t", "").ifEmpty { null }, o.optString("c", "Altro"))
         }
     }
     fun saveFixed(l: List<Fixed>) {
         val a = JSONArray()
-        l.forEach { a.put(JSONObject().put("id", it.id).put("n", it.name).put("a", it.amount).put("f", it.from).put("t", it.to ?: "")) }
+        l.forEach { a.put(JSONObject().put("id", it.id).put("n", it.name).put("a", it.amount).put("f", it.from).put("t", it.to ?: "").put("c", it.category)) }
         p.edit().putString("fixed2", a.toString()).apply()
         QuickAddWidget.refresh(ctx)
     }
@@ -321,8 +321,8 @@ fun App(
     val avgDailyVariable = if (elapsedDays > 0) totalVar / elapsedDays else 0.0
     val forecast = left - avgDailyVariable * daysLeft
 
-    fun addFixed(n: String, a: Double) {
-        fixedAll.add(Fixed(UUID.randomUUID().toString(), n, a, ms, null)); store.saveFixed(fixedAll)
+    fun addFixed(n: String, a: Double, category: String) {
+        fixedAll.add(Fixed(UUID.randomUUID().toString(), n, a, ms, null, category)); store.saveFixed(fixedAll)
     }
     fun deleteFixed(f: Fixed) {
         val i = fixedAll.indexOf(f)
@@ -485,7 +485,7 @@ fun App(
             Row2(it) { editingExpense = i }
         }
         item { Header("Spese fisse") { dialog = "fixed" } }
-        items(activeFixed) { f -> Row2(Item(f.name, f.amount)) { editing = f } }
+        items(activeFixed) { f -> Row2(Item(f.name, f.amount, category = f.category)) { editing = f } }
         item { Text("Tocca una voce per modificarne nome/importo. Le spese fisse mantengono lo storico.", fontSize = 12.sp, color = Color(0xFF64748B)) }
         }
     }
@@ -501,8 +501,8 @@ fun App(
         "salary" -> InputDialog("Stipendio previsto (minimo) da questo mese", false, { dialog = null }) { _, a, _, _ ->
             salaryHist[ms] = a; store.saveSalaryHist(salaryHist); dialog = null
         }
-        "fixed" -> InputDialog("Nuova spesa fissa da questo mese", true, { dialog = null }) { n, a, _, _ ->
-            addFixed(n, a); dialog = null
+        "fixed" -> InputDialog("Nuova spesa fissa da questo mese", true, { dialog = null }) { n, a, _, category ->
+            addFixed(n, a, category); dialog = null
         }
         "exp" -> InputDialog("Nuova spesa", true, { dialog = null }) { n, a, date, category ->
             expenses.add(0, Item(n, a, date, category)); store.saveExpenses(ms, expenses)
@@ -540,6 +540,7 @@ fun App(
     editing?.let { f ->
         var name by remember(f) { mutableStateOf(f.name) }
         var amount by remember(f) { mutableStateOf(f.amount.toString()) }
+        var category by remember(f) { mutableStateOf(f.category) }
         AlertDialog(
             onDismissRequest = { editing = null },
             title = { Text("Modifica spesa fissa") },
@@ -548,6 +549,8 @@ fun App(
                     Text("Il nome e l'importo modificati valgono da questo mese in poi; lo storico dei mesi passati resta invariato.", fontSize = 12.sp)
                     OutlinedTextField(name, { name = it }, label = { Text("Nome") }, singleLine = true)
                     OutlinedTextField(amount, { amount = it }, label = { Text("Importo €") }, singleLine = true)
+                    Text("Categoria", fontSize = 12.sp, color = Color(0xFF64748B))
+                    CategoryGrid(category) { category = it }
                 }
             },
             confirmButton = {
@@ -555,10 +558,10 @@ fun App(
                     val a = amount.replace(',', '.').toDoubleOrNull()
                     if (a != null && name.isNotBlank()) {
                         val i = fixedAll.indexOf(f)
-                        if (f.from == ms) fixedAll[i] = f.copy(name = name.trim(), amount = a)
+                        if (f.from == ms) fixedAll[i] = f.copy(name = name.trim(), amount = a, category = category)
                         else {
                             fixedAll[i] = f.copy(to = prev)
-                            fixedAll.add(Fixed(UUID.randomUUID().toString(), name.trim(), a, ms, f.to))
+                            fixedAll.add(Fixed(UUID.randomUUID().toString(), name.trim(), a, ms, f.to, category))
                         }
                         store.saveFixed(fixedAll)
                         editing = null
@@ -821,7 +824,7 @@ fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: S
     var amount by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
     var category by remember { mutableStateOf("Altro") }
-    val categories = listOf("Alimentari", "Casa", "Auto", "Bollette", "Abbonamenti", "Svago", "Salute", "Shopping", "Altro")
+    val categories = listOf("Alimentari", "Casa", "Auto", "Bollette", "Abbonamenti", "Svago", "Salute", "Shopping", "Banca", "Altro")
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
