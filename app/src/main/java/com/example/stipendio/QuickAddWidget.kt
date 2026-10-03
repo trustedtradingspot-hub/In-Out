@@ -13,6 +13,11 @@ import java.util.Locale
 class QuickAddWidget : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) = refresh(ctx)
 
+    override fun onEnabled(ctx: Context) {
+        super.onEnabled(ctx)
+        refresh(ctx)
+    }
+
     companion object {
         fun refresh(ctx: Context) {
             val mgr = AppWidgetManager.getInstance(ctx)
