@@ -61,6 +61,16 @@ class Store(private val ctx: Context) {
         p.edit().putString("exp_$m", a.toString()).apply()
         QuickAddWidget.refresh(ctx)
     }
+    fun incomes(m: String): List<Item> {
+        val a = JSONArray(p.getString("inc_$m", "[]"))
+        return (0 until a.length()).map { val o = a.getJSONObject(it); Item(o.getString("n"), o.getDouble("a")) }
+    }
+    fun saveIncomes(m: String, l: List<Item>) {
+        val a = JSONArray()
+        l.forEach { a.put(JSONObject().put("n", it.name).put("a", it.amount)) }
+        p.edit().putString("inc_$m", a.toString()).apply()
+        QuickAddWidget.refresh(ctx)
+    }
     fun fixed(): List<Fixed> {
         val a = JSONArray(p.getString("fixed2", "[]"))
         return (0 until a.length()).map {
@@ -95,7 +105,8 @@ class Store(private val ctx: Context) {
         p.edit().putString("actual", JSONObject(h).toString()).apply()
         QuickAddWidget.refresh(ctx)
     }
-    fun remaining(m: String) = (actual()[m] ?: effectiveSalary(salaryHist(), m)) -
+    fun remaining(m: String) = (actual()[m] ?: effectiveSalary(salaryHist(), m)) +
+        incomes(m).sumOf { it.amount } -
         fixed().filter { it.activeIn(m) }.sumOf { it.amount } - expenses(m).sumOf { it.amount }
 }
 
@@ -135,8 +146,11 @@ fun App(store: Store, quickAdd: Boolean, onQuickConsumed: () -> Unit) {
     val ms = month.toString()
     val prev = month.minusMonths(1).toString()
     val expenses = remember(month) { mutableStateListOf<Item>().apply { addAll(store.expenses(ms)) } }
+    val incomes = remember(month) { mutableStateListOf<Item>().apply { addAll(store.incomes(ms)) } }
     var dialog by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<Fixed?>(null) }
+    var editingExpense by remember { mutableStateOf<Int?>(null) }
+    var editingIncome by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(quickAdd) {
         if (quickAdd) { month = currentCycle(startDay); dialog = "exp"; onQuickConsumed() }
@@ -148,7 +162,8 @@ fun App(store: Store, quickAdd: Boolean, onQuickConsumed: () -> Unit) {
     val activeFixed = fixedAll.filter { it.activeIn(ms) }
     val totalFixed = activeFixed.sumOf { it.amount }
     val totalVar = expenses.sumOf { it.amount }
-    val left = salary - totalFixed - totalVar
+    val totalIncome = incomes.sumOf { it.amount }
+    val left = salary + totalIncome - totalFixed - totalVar
 
     fun addFixed(n: String, a: Double) {
         fixedAll.add(Fixed(UUID.randomUUID().toString(), n, a, ms, null)); store.saveFixed(fixedAll)
@@ -193,6 +208,7 @@ fun App(store: Store, quickAdd: Boolean, onQuickConsumed: () -> Unit) {
                         Text("Previsto ${eur.format(planned)} → ${if (d >= 0) "+" else "−"}${eur.format(kotlin.math.abs(d))}",
                             fontSize = 12.sp, color = if (d >= 0) Color(0xFF4CAF50) else Color(0xFFEF5350))
                     }
+                    Text("Introiti extra: +${eur.format(totalIncome)}")
                     Text("Spese fisse: −${eur.format(totalFixed)}")
                     Text("Spese variabili: −${eur.format(totalVar)}")
                 }
@@ -204,13 +220,17 @@ fun App(store: Store, quickAdd: Boolean, onQuickConsumed: () -> Unit) {
                 OutlinedButton(onClick = { dialog = "actual" }, Modifier.weight(1f)) { Text("Stipendio arrivato", fontSize = 12.sp) }
             }
         }
+        item { Header("Introiti extra") { dialog = "income" } }
+        itemsIndexed(incomes) { i, it ->
+            Row2(it, Color(0xFF4CAF50)) { editingIncome = i }
+        }
         item { Header("Spese del mese") { dialog = "exp" } }
         itemsIndexed(expenses) { i, it ->
-            Row2(it) { expenses.removeAt(i); store.saveExpenses(ms, expenses) }
+            Row2(it) { editingExpense = i }
         }
         item { Header("Spese fisse") { dialog = "fixed" } }
         items(activeFixed) { f -> Row2(Item(f.name, f.amount)) { editing = f } }
-        item { Text("Tocca una spesa per eliminarla (variabili) o modificarla (fisse)", fontSize = 12.sp, color = Color.Gray) }
+        item { Text("Tocca una voce per modificarne nome/importo. Le spese fisse mantengono lo storico.", fontSize = 12.sp, color = Color.Gray) }
     }
 
     when (dialog) {
@@ -230,28 +250,85 @@ fun App(store: Store, quickAdd: Boolean, onQuickConsumed: () -> Unit) {
         "exp" -> InputDialog("Nuova spesa", true, { dialog = null }) { n, a ->
             expenses.add(0, Item(n, a)); store.saveExpenses(ms, expenses); dialog = null
         }
+        "income" -> InputDialog("Nuovo introito", true, { dialog = null }, nameLabel = "Descrizione") { n, a ->
+            incomes.add(0, Item(n, a)); store.saveIncomes(ms, incomes); dialog = null
+        }
     }
 
     editing?.let { f ->
+        var name by remember(f) { mutableStateOf(f.name) }
         var amount by remember(f) { mutableStateOf(f.amount.toString()) }
         AlertDialog(
             onDismissRequest = { editing = null },
-            title = { Text(f.name) },
+            title = { Text("Modifica spesa fissa") },
             text = {
-                Column {
-                    Text("Le modifiche valgono da questo mese in poi; i mesi passati non cambiano.", fontSize = 12.sp)
-                    OutlinedTextField(amount, { amount = it }, label = { Text("Nuovo importo €") }, singleLine = true)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Il nome e l'importo modificati valgono da questo mese in poi; lo storico dei mesi passati resta invariato.", fontSize = 12.sp)
+                    OutlinedTextField(name, { name = it }, label = { Text("Nome") }, singleLine = true)
+                    OutlinedTextField(amount, { amount = it }, label = { Text("Importo €") }, singleLine = true)
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    amount.replace(',', '.').toDoubleOrNull()?.let { editFixed(f, it); editing = null }
+                    val a = amount.replace(',', '.').toDoubleOrNull()
+                    if (a != null && name.isNotBlank()) {
+                        val i = fixedAll.indexOf(f)
+                        if (f.from == ms) fixedAll[i] = f.copy(name = name.trim(), amount = a)
+                        else {
+                            fixedAll[i] = f.copy(to = prev)
+                            fixedAll.add(Fixed(UUID.randomUUID().toString(), name.trim(), a, ms, f.to))
+                        }
+                        store.saveFixed(fixedAll)
+                        editing = null
+                    }
                 }) { Text("Salva") }
             },
             dismissButton = {
                 TextButton(onClick = { deleteFixed(f); editing = null }) { Text("Elimina da qui") }
             }
         )
+    }
+
+    editingExpense?.let { index ->
+        if (index in expenses.indices) {
+            ItemEditDialog(
+                title = "Modifica spesa",
+                item = expenses[index],
+                deleteText = "Elimina",
+                onDismiss = { editingExpense = null },
+                onSave = { item ->
+                    expenses[index] = item
+                    store.saveExpenses(ms, expenses)
+                    editingExpense = null
+                },
+                onDelete = {
+                    expenses.removeAt(index)
+                    store.saveExpenses(ms, expenses)
+                    editingExpense = null
+                }
+            )
+        }
+    }
+
+    editingIncome?.let { index ->
+        if (index in incomes.indices) {
+            ItemEditDialog(
+                title = "Modifica introito",
+                item = incomes[index],
+                deleteText = "Elimina",
+                onDismiss = { editingIncome = null },
+                onSave = { item ->
+                    incomes[index] = item
+                    store.saveIncomes(ms, incomes)
+                    editingIncome = null
+                },
+                onDelete = {
+                    incomes.removeAt(index)
+                    store.saveIncomes(ms, incomes)
+                    editingIncome = null
+                }
+            )
+        }
     }
 }
 
@@ -264,15 +341,48 @@ fun Header(title: String, onAdd: () -> Unit) {
 }
 
 @Composable
-fun Row2(item: Item, onClick: () -> Unit) {
+fun Row2(item: Item, amountColor: Color = Color.Unspecified, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 8.dp)) {
         Text(item.name, Modifier.weight(1f))
-        Text(eur.format(item.amount))
+        Text(
+            (if (amountColor == Color.Unspecified) "" else "+") + eur.format(item.amount),
+            color = amountColor
+        )
     }
 }
 
 @Composable
-fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: String = "Importo €", onOk: (String, Double) -> Unit) {
+fun ItemEditDialog(
+    title: String,
+    item: Item,
+    deleteText: String,
+    onDismiss: () -> Unit,
+    onSave: (Item) -> Unit,
+    onDelete: () -> Unit
+) {
+    var name by remember(item) { mutableStateOf(item.name) }
+    var amount by remember(item) { mutableStateOf(item.amount.toString()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(name, { name = it }, label = { Text("Nome") }, singleLine = true)
+                OutlinedTextField(amount, { amount = it }, label = { Text("Importo €") }, singleLine = true)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val a = amount.replace(',', '.').toDoubleOrNull()
+                if (a != null && name.isNotBlank()) onSave(Item(name.trim(), a))
+            }) { Text("Salva") }
+        },
+        dismissButton = { TextButton(onClick = onDelete) { Text(deleteText) } }
+    )
+}
+
+@Composable
+fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: String = "Importo €", nameLabel: String = "Descrizione", onOk: (String, Double) -> Unit) {
     var name by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     AlertDialog(
