@@ -80,8 +80,38 @@ class QuickAddWidget : AppWidgetProvider() {
 
                 views.setTextViewText(R.id.amount, formatted)
                 views.setTextViewText(R.id.widget_subtitle, "Stipendio rimanente")
-                views.setProgressBar(R.id.widget_progress, 100, remainingPct, false)
+
+                // Static ring: no animation. Color progresses blue -> green -> red.
+                val ringStep = ((remainingPct + 5) / 10).coerceIn(0, 10) * 10
+                val ringRes = when (ringStep) {
+                    0 -> R.drawable.widget_ring_0
+                    10 -> R.drawable.widget_ring_10
+                    20 -> R.drawable.widget_ring_20
+                    30 -> R.drawable.widget_ring_30
+                    40 -> R.drawable.widget_ring_40
+                    50 -> R.drawable.widget_ring_50
+                    60 -> R.drawable.widget_ring_60
+                    70 -> R.drawable.widget_ring_70
+                    80 -> R.drawable.widget_ring_80
+                    90 -> R.drawable.widget_ring_90
+                    else -> R.drawable.widget_ring_100
+                }
+                val percentColor = when (ringStep) {
+                    0 -> "#1565C0"
+                    10 -> "#1685C7"
+                    20 -> "#169FC3"
+                    30 -> "#16B38E"
+                    40 -> "#16A34A"
+                    50 -> "#2EAD43"
+                    60 -> "#76B82A"
+                    70 -> "#C0A52A"
+                    80 -> "#E58A20"
+                    90 -> "#E35A28"
+                    else -> "#D92D2D"
+                }
+                views.setImageViewResource(R.id.widget_progress, ringRes)
                 views.setTextViewText(R.id.widget_percent, "$remainingPct%")
+                views.setTextColor(R.id.widget_percent, android.graphics.Color.parseColor(percentColor))
             } catch (_: Exception) {
                 // Never let a malformed/old preference block the widget from loading.
                 views.setTextViewText(R.id.amount, "Apri l'app")
