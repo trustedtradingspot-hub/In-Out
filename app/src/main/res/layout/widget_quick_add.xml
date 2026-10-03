@@ -35,7 +35,7 @@
             android:id="@+id/widget_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Rimanente"
+            android:text="Stipendio rimanente"
             android:textColor="#64748B"
             android:textSize="11sp" />
 
@@ -54,23 +54,19 @@
         android:layout_height="52dp"
         android:layout_marginStart="6dp">
 
-        <ProgressBar
+        <ImageView
             android:id="@+id/widget_progress"
-            style="@android:style/Widget.ProgressBar.Large"
             android:layout_width="52dp"
             android:layout_height="52dp"
-            android:indeterminate="false"
-            android:max="100"
-            android:progress="50"
-            android:progressTint="#1458C8"
-            android:progressBackgroundTint="#DCE8FA" />
+            android:src="@drawable/widget_ring_0"
+            android:contentDescription="Percentuale stipendio rimanente" />
 
         <TextView
             android:id="@+id/widget_percent"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
-            android:text="50%"
+            android:text="0%"
             android:textColor="#1458C8"
             android:textSize="12sp"
             android:textStyle="bold" />
