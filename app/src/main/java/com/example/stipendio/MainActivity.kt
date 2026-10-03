@@ -704,6 +704,45 @@ fun SummaryLine(label: String, value: String, valueColor: Color) {
     }
 }
 
+
+data class CategoryOption(val name: String, val icon: String)
+
+@Composable
+fun CategoryGrid(selected: String, onSelected: (String) -> Unit) {
+    val categories = listOf(
+        CategoryOption("Alimentari", "🛒"),
+        CategoryOption("Casa", "🏠"),
+        CategoryOption("Auto", "🚗"),
+        CategoryOption("Bollette", "💡"),
+        CategoryOption("Abbonamenti", "🔄"),
+        CategoryOption("Svago", "🎮"),
+        CategoryOption("Salute", "❤️"),
+        CategoryOption("Shopping", "🛍️"),
+        CategoryOption("Altro", "•••")
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+        categories.chunked(3).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                row.forEach { c ->
+                    val active = selected == c.name
+                    Surface(
+                        modifier = Modifier.weight(1f).height(48.dp).clickable { onSelected(c.name) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (active) Color(0xFFE6F0FF) else Color(0xFFF6F8FC),
+                        border = BorderStroke(1.dp, if (active) Color(0xFF2563EB) else Color(0xFFE2E8F0))
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                            Text(c.icon, fontSize = 16.sp, lineHeight = 16.sp)
+                            Text(c.name, fontSize = 9.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                                color = if (active) Color(0xFF1557B0) else Color(0xFF475569), maxLines = 1)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun ItemEditDialog(
     title: String,
@@ -717,7 +756,7 @@ fun ItemEditDialog(
     var amount by remember(item) { mutableStateOf(item.amount.toString()) }
     var date by remember(item) { mutableStateOf(item.date) }
     var category by remember(item) { mutableStateOf(item.category) }
-    val categories = listOf("Alimentari", "Casa", "Auto", "Bollette", "Abbonamenti", "Svago", "Salute", "Shopping", "Altro")
+    
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -727,16 +766,7 @@ fun ItemEditDialog(
                 OutlinedTextField(amount, { amount = it }, label = { Text("Importo €") }, singleLine = true)
                 OutlinedTextField(date, { date = it }, label = { Text("Data") }, singleLine = true, supportingText = { Text("Predefinita a oggi, modificabile") })
                 Text("Categoria", fontSize = 12.sp, color = Color(0xFF64748B))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                    categories.take(5).forEach { c ->
-                        FilterChip(selected = category == c, onClick = { category = c }, label = { Text(c, fontSize = 10.sp) })
-                    }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                    categories.drop(5).forEach { c ->
-                        FilterChip(selected = category == c, onClick = { category = c }, label = { Text(c, fontSize = 10.sp) })
-                    }
-                }
+                CategoryGrid(category) { category = it }
             }
         },
         confirmButton = {
@@ -778,16 +808,7 @@ fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: S
                 OutlinedTextField(date, { date = it }, label = { Text("Data") }, singleLine = true, supportingText = { Text("Predefinita a oggi, modificabile") })
                 if (askName) {
                     Text("Categoria", fontSize = 12.sp, color = Color(0xFF64748B))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                        categories.take(5).forEach { c ->
-                            FilterChip(selected = category == c, onClick = { category = c }, label = { Text(c, fontSize = 10.sp) })
-                        }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                        categories.drop(5).forEach { c ->
-                            FilterChip(selected = category == c, onClick = { category = c }, label = { Text(c, fontSize = 10.sp) })
-                        }
-                    }
+                    CategoryGrid(category) { category = it }
                 }
             }
         },
