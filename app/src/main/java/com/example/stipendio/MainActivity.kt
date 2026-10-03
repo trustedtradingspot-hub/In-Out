@@ -279,6 +279,7 @@ fun App(
     var editing by remember { mutableStateOf<Fixed?>(null) }
     var editingExpense by remember { mutableStateOf<Int?>(null) }
     var editingIncome by remember { mutableStateOf<Int?>(null) }
+    var selectedNav by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(quickAdd) {
         if (quickAdd) { month = currentCycle(startDay); dialog = "exp"; onQuickConsumed() }
@@ -311,31 +312,40 @@ fun App(
         store.saveFixed(fixedAll)
     }
 
-    LazyColumn(
-        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp),
+    Scaffold(
+        containerColor = Color(0xFFF6F8FC),
+        bottomBar = {
+            NavigationBar(containerColor = Color.White) {
+                NavigationBarItem(selected = selectedNav == 0, onClick = { selectedNav = 0 }, icon = { Text("⌂", fontSize = 20.sp) }, label = { Text("Home") })
+                NavigationBarItem(selected = selectedNav == 1, onClick = { selectedNav = 1; dialog = "transactions" }, icon = { Text("≡", fontSize = 20.sp) }, label = { Text("Transazioni") })
+                NavigationBarItem(selected = selectedNav == 2, onClick = { selectedNav = 2; dialog = "analysis" }, icon = { Text("▥", fontSize = 20.sp) }, label = { Text("Analisi") })
+                NavigationBarItem(selected = selectedNav == 3, onClick = { selectedNav = 3; dialog = "backup" }, icon = { Text("⚙", fontSize = 19.sp) }, label = { Text("Altro") })
+            }
+        }
+    ) { contentPadding ->
+        LazyColumn(
+            Modifier.fillMaxSize().padding(contentPadding).statusBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
-            Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(shape = RoundedCornerShape(15.dp), color = Color.White, shadowElevation = 2.dp, modifier = Modifier.size(52.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Image(painter = painterResource(R.drawable.ic_mybudget_wallet), contentDescription = "Logo MyBudget+", modifier = Modifier.size(42.dp))
+            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 2.dp) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Image(painter = painterResource(R.drawable.ic_mybudget_wallet), contentDescription = "Logo MyBudget+", modifier = Modifier.size(44.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("MyBudget+", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0D4FA8))
+                        Text("Il tuo budget, sempre sotto controllo", fontSize = 11.sp, color = Color(0xFF64748B))
                     }
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("MyBudget+", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
-                    Text(cycleLabel(month, startDay), fontSize = 13.sp, color = Color(0xFF64748B))
-                }
-                Surface(shape = RoundedCornerShape(14.dp), color = Color.White, shadowElevation = 1.dp) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { month = month.minusMonths(1) }) { Text("‹", fontSize = 24.sp) }
-                        TextButton(onClick = { month = month.plusMonths(1) }) { Text("›", fontSize = 24.sp) }
+                    Surface(shape = RoundedCornerShape(13.dp), color = Color(0xFFF4F7FC)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { month = month.minusMonths(1) }, contentPadding = PaddingValues(horizontal = 7.dp)) { Text("‹", fontSize = 22.sp) }
+                            TextButton(onClick = { month = month.plusMonths(1) }, contentPadding = PaddingValues(horizontal = 7.dp)) { Text("›", fontSize = 22.sp) }
+                        }
                     }
-                }
-                Spacer(Modifier.width(4.dp))
-                Surface(shape = RoundedCornerShape(14.dp), color = Color.White, shadowElevation = 1.dp) {
-                    TextButton(onClick = { dialog = "day" }) { Text("⚙", fontSize = 18.sp) }
+                    Spacer(Modifier.width(4.dp))
+                    Surface(shape = RoundedCornerShape(13.dp), color = Color(0xFFF4F7FC)) {
+                        TextButton(onClick = { dialog = "day" }, contentPadding = PaddingValues(10.dp)) { Text("⚙", fontSize = 17.sp) }
+                    }
                 }
             }
         }
@@ -343,33 +353,45 @@ fun App(
             val budgetBase = salary + totalIncome
             val usedRatio = if (budgetBase > 0) ((totalFixed + totalVar) / budgetBase).coerceIn(0.0, 1.0) else 0.0
             val usedPct = (usedRatio * 100).toInt()
-            val progressColor = if (usedPct >= 90) Color(0xFFEF4444) else if (usedPct >= 80) Color(0xFFF59E0B) else Color(0xFF2563EB)
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)) {
-                Column(Modifier.background(Brush.verticalGradient(listOf(Color.White, Color(0xFFF4F8FF)))).padding(22.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("DISPONIBILITÀ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
-                            Text(eur.format(left), fontSize = 42.sp, fontWeight = FontWeight.ExtraBold, color = if (left >= 0) Color(0xFF16A34A) else Color(0xFFDC2626))
-                        }
-                        Surface(shape = RoundedCornerShape(14.dp), color = if (usedPct >= 80) Color(0xFFFFF3E0) else Color(0xFFEAF2FF)) {
-                            Text(usedPct.toString() + "%", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = progressColor)
+            val progressColor = if (usedPct >= 90) Color(0xFFEF4444) else if (usedPct >= 80) Color(0xFFF59E0B) else Color(0xFF1683E8)
+            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), color = Color(0xFF0B5FC7), shadowElevation = 5.dp) {
+                Column(Modifier.padding(14.dp)) {
+                    Text("Buongiorno!", color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
+                    Text("Il tuo budget, in sintesi", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+                        Column(Modifier.padding(18.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("SALDO DISPONIBILE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
+                                    Text(eur.format(left), fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, color = if (left >= 0) Color(0xFF123B6D) else Color(0xFFDC2626))
+                                }
+                                Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFEAF2FF)) {
+                                    Text("$usedPct%", modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = progressColor)
+                                }
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            LinearProgressIndicator(progress = { usedRatio.toFloat() }, modifier = Modifier.fillMaxWidth().height(8.dp), color = progressColor, trackColor = Color(0xFFE7EDF5))
+                            Spacer(Modifier.height(6.dp))
+                            Text(if (usedPct >= 80) "Attenzione: hai superato l'80% del budget" else "$usedPct% dello stipendio mensile", fontSize = 11.sp, fontWeight = if (usedPct >= 80) FontWeight.SemiBold else FontWeight.Normal, color = if (usedPct >= 80) progressColor else Color(0xFF64748B))
                         }
                     }
-                    Spacer(Modifier.height(14.dp))
-                    LinearProgressIndicator(progress = { usedRatio.toFloat() }, modifier = Modifier.fillMaxWidth().height(9.dp), color = progressColor, trackColor = Color(0xFFE6EAF2))
+                }
+            }
+        }
+        item {
+            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 2.dp) {
+                Column(Modifier.padding(horizontal = 18.dp, vertical = 15.dp)) {
+                    Text("RIEPILOGO DEL MESE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
                     Spacer(Modifier.height(5.dp))
-                    Text(if (usedPct >= 80) "Attenzione: hai superato l'80% del budget" else usedPct.toString() + "% del budget utilizzato", fontSize = 12.sp, fontWeight = if (usedPct >= 80) FontWeight.SemiBold else FontWeight.Normal, color = if (usedPct >= 80) progressColor else Color(0xFF64748B))
-                    Spacer(Modifier.height(14.dp))
-                    HorizontalDivider(color = Color(0xFFE8ECF3))
-                    Spacer(Modifier.height(12.dp))
-                    SummaryLine("Stipendio effettivo", eur.format(salary), Color(0xFF111827))
+                    SummaryLine("Stipendio effettivo", eur.format(salary), Color(0xFF16A34A))
                     if (actual != null) {
                         val d = actual - planned
                         SummaryLine("Differenza dal previsto", (if (d >= 0) "+" else "−") + eur.format(kotlin.math.abs(d)), if (d >= 0) Color(0xFF16A34A) else Color(0xFFDC2626))
                     }
                     SummaryLine("Introiti extra", "+" + eur.format(totalIncome), Color(0xFF16A34A))
-                    SummaryLine("Spese fisse", "−" + eur.format(totalFixed), Color(0xFF374151))
-                    SummaryLine("Spese variabili", "−" + eur.format(totalVar), Color(0xFF374151))
+                    SummaryLine("Spese fisse", "−" + eur.format(totalFixed), Color(0xFFEF476F))
+                    SummaryLine("Spese variabili", "−" + eur.format(totalVar), Color(0xFFEF476F))
                 }
             }
         }
@@ -395,6 +417,7 @@ fun App(
         item { Header("Spese fisse") { dialog = "fixed" } }
         items(activeFixed) { f -> Row2(Item(f.name, f.amount)) { editing = f } }
         item { Text("Tocca una voce per modificarne nome/importo. Le spese fisse mantengono lo storico.", fontSize = 12.sp, color = Color(0xFF64748B)) }
+        }
     }
 
     when (dialog) {
@@ -424,6 +447,21 @@ fun App(
         "backup" -> BackupDialog(
             onExport = { onExportBackup(); dialog = null },
             onImport = { onImportBackup(); dialog = null },
+            onDismiss = { dialog = null }
+        )
+        "transactions" -> TransactionsDialog(
+            incomes = incomes,
+            expenses = expenses,
+            onAddExpense = { dialog = "exp" },
+            onAddIncome = { dialog = "income" },
+            onDismiss = { dialog = null }
+        )
+        "analysis" -> AnalysisDialog(
+            salary = salary,
+            income = totalIncome,
+            fixed = totalFixed,
+            variable = totalVar,
+            remaining = left,
             onDismiss = { dialog = null }
         )
     }
@@ -556,9 +594,29 @@ fun Row2(item: Item, amountColor: Color = Color.Unspecified, onClick: () -> Unit
 
 @Composable
 fun SummaryLine(label: String, value: String, valueColor: Color) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f), fontSize = 14.sp, color = Color(0xFF64748B))
-        Text(value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = valueColor)
+    val dotColor = when {
+        label.contains("Stipendio") -> Color(0xFF14B8A6)
+        label.contains("Introiti") -> Color(0xFF22C55E)
+        label.contains("Differenza") -> Color(0xFF3B82F6)
+        else -> Color(0xFFEF476F)
+    }
+    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+        Surface(Modifier.size(28.dp), shape = RoundedCornerShape(50), color = dotColor.copy(alpha = 0.14f)) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    when {
+                        label.contains("Stipendio") -> "€"
+                        label.contains("Introiti") -> "+"
+                        label.contains("Differenza") -> "↕"
+                        else -> "−"
+                    },
+                    fontSize = 13.sp, fontWeight = FontWeight.Bold, color = dotColor
+                )
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(label, Modifier.weight(1f), fontSize = 13.sp, color = Color(0xFF475569))
+        Text(value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = valueColor)
     }
 }
 
@@ -612,5 +670,72 @@ fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: S
             }) { Text("OK") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } }
+    )
+}
+
+
+@Composable
+fun TransactionsDialog(
+    incomes: List<Item>,
+    expenses: List<Item>,
+    onAddExpense: () -> Unit,
+    onAddIncome: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Transazioni") },
+        text = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.heightIn(max = 360.dp)) {
+                items(incomes) { item -> Row2(item, Color(0xFF16A34A)) {} }
+                items(expenses) { item -> Row2(item) {} }
+            }
+        },
+        confirmButton = {
+            Row {
+                TextButton(onClick = onAddIncome) { Text("+ Entrata") }
+                TextButton(onClick = onAddExpense) { Text("+ Spesa") }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Chiudi") } }
+    )
+}
+
+@Composable
+fun AnalysisDialog(
+    salary: Double,
+    income: Double,
+    fixed: Double,
+    variable: Double,
+    remaining: Double,
+    onDismiss: () -> Unit
+) {
+    val base = salary + income
+    val used = if (base > 0) ((fixed + variable) / base).coerceIn(0.0, 1.0) else 0.0
+    val pct = (used * 100).toInt()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Analisi del mese") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(150.dp)) {
+                    CircularProgressIndicator(
+                        progress = { used.toFloat() },
+                        modifier = Modifier.fillMaxSize(),
+                        strokeWidth = 14.dp,
+                        color = if (pct >= 80) Color(0xFFF59E0B) else Color(0xFF1683E8),
+                        trackColor = Color(0xFFE5EAF2)
+                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("$pct%", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF123B6D))
+                        Text("del budget", fontSize = 12.sp, color = Color(0xFF64748B))
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Text("Spese totali: ${eur.format(fixed + variable)}", fontWeight = FontWeight.SemiBold)
+                Text("Disponibilità: ${eur.format(remaining)}", color = if (remaining >= 0) Color(0xFF16A34A) else Color(0xFFDC2626))
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } }
     )
 }
