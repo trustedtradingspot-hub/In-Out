@@ -228,10 +228,10 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = lightColorScheme(
                     primary = Color(0xFF2563EB),
                     secondary = Color(0xFF60A5FA),
-                    background = Color(0xFFEAF2FF),
+                    background = Color(0xFF0B5FC7),
                     surface = Color.White
                 )) {
-                Surface(Modifier.fillMaxSize(), color = Color(0xFFEAF2FF)) {
+                Surface(Modifier.fillMaxSize(), color = Color(0xFF0B5FC7)) {
                     App(
                         store, quick,
                         onQuickConsumed = { quick = false; intent.removeExtra("quick_add") },
@@ -313,7 +313,7 @@ fun App(
     }
 
     Scaffold(
-        containerColor = Color(0xFFEAF2FF),
+        containerColor = Color(0xFF0B5FC7),
         bottomBar = {
             NavigationBar(containerColor = Color.White) {
                 NavigationBarItem(selected = selectedNav == 0, onClick = { selectedNav = 0 }, icon = { Text("⌂", fontSize = 20.sp) }, label = { Text("Home") })
