@@ -651,21 +651,44 @@ fun Header(title: String, onAdd: () -> Unit) {
     }
 }
 
+fun categoryIcon(category: String): String = when (category) {
+    "Alimentari" -> "🛒"
+    "Casa" -> "🏠"
+    "Auto" -> "🚗"
+    "Bollette" -> "💡"
+    "Abbonamenti" -> "🔄"
+    "Svago" -> "🎮"
+    "Salute" -> "❤️"
+    "Shopping" -> "🛍️"
+    "Banca" -> "🏦"
+    else -> "•••"
+}
+
 @Composable
 fun Row2(item: Item, amountColor: Color = Color.Unspecified, onClick: () -> Unit) {
     Card(Modifier.fillMaxWidth().clickable { onClick() }, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(Modifier.size(10.dp), shape = RoundedCornerShape(50), color = if (amountColor == Color.Unspecified) Color(0xFFCBD5E1) else Color(0xFF4ADE80)) {}
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                Modifier.size(40.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = if (amountColor == Color.Unspecified) Color(0xFFF1F5F9) else Color(0xFFEAFBF2)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(categoryIcon(item.category), fontSize = 19.sp)
+                }
+            }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(item.name, fontSize = 15.sp)
-                Text(formatDisplayDate(item.date), fontSize = 10.sp, color = Color(0xFF64748B))
+                Text(item.name, fontSize = 15.sp, maxLines = 1)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(formatDisplayDate(item.date), fontSize = 10.sp, color = Color(0xFF64748B))
+                    Text("  •  " + item.category.ifBlank { "Altro" }, fontSize = 10.sp, color = Color(0xFF94A3B8), maxLines = 1)
+                }
             }
             Text((if (amountColor == Color.Unspecified) "−" else "+") + eur.format(item.amount), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (amountColor == Color.Unspecified) Color(0xFF111827) else amountColor)
         }
     }
 }
-
 @Composable
 fun MiniKpi(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
     Surface(modifier, shape = RoundedCornerShape(14.dp), color = Color(0xFFF6F9FD), border = BorderStroke(1.dp, Color(0xFFE1E9F4))) {
@@ -718,6 +741,7 @@ fun CategoryGrid(selected: String, onSelected: (String) -> Unit) {
         CategoryOption("Svago", "🎮"),
         CategoryOption("Salute", "❤️"),
         CategoryOption("Shopping", "🛍️"),
+        CategoryOption("Banca", "🏦"),
         CategoryOption("Altro", "•••")
     )
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
