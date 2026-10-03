@@ -2,9 +2,11 @@ package com.example.stipendio
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -108,18 +110,95 @@ class Store(private val ctx: Context) {
     fun remaining(m: String) = (actual()[m] ?: effectiveSalary(salaryHist(), m)) +
         incomes(m).sumOf { it.amount } -
         fixed().filter { it.activeIn(m) }.sumOf { it.amount } - expenses(m).sumOf { it.amount }
+
+    fun exportBackup(): String {
+        val root = JSONObject()
+        root.put("app", "Stipendio")
+        root.put("formatVersion", 1)
+        root.put("createdAt", System.currentTimeMillis())
+        val data = JSONObject()
+        for ((key, value) in p.all) {
+            when (value) {
+                is String -> data.put(key, value)
+                is Int -> data.put(key, value)
+                is Long -> data.put(key, value)
+                is Boolean -> data.put(key, value)
+                is Float -> data.put(key, value.toDouble())
+                is Double -> data.put(key, value)
+                is Set<*> -> data.put(key, JSONArray(value.toList()))
+            }
+        }
+        root.put("preferences", data)
+        return root.toString(2)
+    }
+
+    fun importBackup(json: String) {
+        val root = JSONObject(json)
+        require(root.optString("app") == "Stipendio") { "File non riconosciuto" }
+        require(root.optInt("formatVersion", 0) == 1) { "Versione backup non supportata" }
+        val data = root.getJSONObject("preferences")
+        val editor = p.edit().clear()
+        val keys = data.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            val value = data.get(key)
+            when (value) {
+                is Boolean -> editor.putBoolean(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is Double -> editor.putFloat(key, value.toFloat())
+                is JSONArray -> {
+                    val set = mutableSetOf<String>()
+                    for (i in 0 until value.length()) set.add(value.getString(i))
+                    editor.putStringSet(key, set)
+                }
+                else -> editor.putString(key, value.toString())
+            }
+        }
+        check(editor.commit()) { "Impossibile salvare il backup" }
+        QuickAddWidget.refresh(ctx)
+    }
 }
 
 class MainActivity : ComponentActivity() {
     private var quick by mutableStateOf(false)
+    private lateinit var store: Store
+    private var backupText by mutableStateOf<String?>(null)
+
+    private val createBackup = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
+        uri ?: return@registerForActivityResult
+        runCatching {
+            contentResolver.openOutputStream(uri)?.use { it.write(store.exportBackup().toByteArray(Charsets.UTF_8)) }
+                ?: error("Impossibile creare il file")
+            backupText = "Backup esportato correttamente."
+        }.onFailure { backupText = "Errore: ${it.message}" }
+    }
+
+    private val openBackup = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        uri ?: return@registerForActivityResult
+        runCatching {
+            val json = contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                ?: error("Impossibile leggere il file")
+            store.importBackup(json)
+            backupText = "Backup importato. I dati precedenti sono stati sostituiti con quelli del backup."
+        }.onFailure { backupText = "Importazione non riuscita: ${it.message}" }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        store = Store(applicationContext)
         quick = intent.getBooleanExtra("quick_add", false)
-        val store = Store(applicationContext)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme(background = Color.Black, surface = Color.Black)) {
                 Surface(Modifier.fillMaxSize()) {
-                    App(store, quick) { quick = false; intent.removeExtra("quick_add") }
+                    App(
+                        store, quick,
+                        onQuickConsumed = { quick = false; intent.removeExtra("quick_add") },
+                        onExportBackup = { createBackup.launch("Stipendio_backup_${java.time.LocalDate.now()}.json") },
+                        onImportBackup = { openBackup.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                        backupText = backupText,
+                        onDismissBackupMessage = { backupText = null }
+                    )
                 }
             }
         }
@@ -137,7 +216,15 @@ class MainActivity : ComponentActivity() {
 private val eur: NumberFormat = NumberFormat.getCurrencyInstance(Locale.ITALY)
 
 @Composable
-fun App(store: Store, quickAdd: Boolean, onQuickConsumed: () -> Unit) {
+fun App(
+    store: Store,
+    quickAdd: Boolean,
+    onQuickConsumed: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
+    backupText: String?,
+    onDismissBackupMessage: () -> Unit
+) {
     val salaryHist = remember { mutableStateMapOf<String, Double>().apply { putAll(store.salaryHist()) } }
     val actualHist = remember { mutableStateMapOf<String, Double>().apply { putAll(store.actual()) } }
     val fixedAll = remember { mutableStateListOf<Fixed>().apply { addAll(store.fixed()) } }
@@ -220,6 +307,11 @@ fun App(store: Store, quickAdd: Boolean, onQuickConsumed: () -> Unit) {
                 OutlinedButton(onClick = { dialog = "actual" }, Modifier.weight(1f)) { Text("Stipendio arrivato", fontSize = 12.sp) }
             }
         }
+        item {
+            OutlinedButton(onClick = { dialog = "backup" }, Modifier.fillMaxWidth()) {
+                Text("Backup e ripristino")
+            }
+        }
         item { Header("Introiti extra") { dialog = "income" } }
         itemsIndexed(incomes) { i, it ->
             Row2(it, Color(0xFF4CAF50)) { editingIncome = i }
@@ -253,6 +345,11 @@ fun App(store: Store, quickAdd: Boolean, onQuickConsumed: () -> Unit) {
         "income" -> InputDialog("Nuovo introito", true, { dialog = null }, nameLabel = "Descrizione") { n, a ->
             incomes.add(0, Item(n, a)); store.saveIncomes(ms, incomes); dialog = null
         }
+        "backup" -> BackupDialog(
+            onExport = { onExportBackup(); dialog = null },
+            onImport = { onImportBackup(); dialog = null },
+            onDismiss = { dialog = null }
+        )
     }
 
     editing?.let { f ->
@@ -332,6 +429,36 @@ fun App(store: Store, quickAdd: Boolean, onQuickConsumed: () -> Unit) {
     }
 }
 
+    if (backupText != null) {
+        AlertDialog(
+            onDismissRequest = onDismissBackupMessage,
+            title = { Text("Backup") },
+            text = { Text(backupText) },
+            confirmButton = { TextButton(onClick = onDismissBackupMessage) { Text("OK") } }
+        )
+    }
+}
+
+@Composable
+fun BackupDialog(onExport: () -> Unit, onImport: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Backup e ripristino") },
+        text = {
+            Text("Il backup contiene tutti i dati dell'app. Esporta periodicamente il file sul telefono o in un cloud. L'importazione sostituisce i dati attuali con quelli presenti nel backup.")
+        },
+        confirmButton = {
+            TextButton(onClick = onExport) { Text("Esporta backup") }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onImport) { Text("Importa backup") }
+                TextButton(onClick = onDismiss) { Text("Chiudi") }
+            }
+        }
+    )
+}
+
 @Composable
 fun Header(title: String, onAdd: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -390,7 +517,7 @@ fun InputDialog(title: String, askName: Boolean, onDismiss: () -> Unit, label: S
         title = { Text(title) },
         text = {
             Column {
-                if (askName) OutlinedTextField(name, { name = it }, label = { Text("Descrizione") }, singleLine = true)
+                if (askName) OutlinedTextField(name, { name = it }, label = { Text(nameLabel) }, singleLine = true)
                 OutlinedTextField(amount, { amount = it }, label = { Text(label) }, singleLine = true)
             }
         },
