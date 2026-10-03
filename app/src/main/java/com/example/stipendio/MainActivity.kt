@@ -331,7 +331,7 @@ fun App(
                     val usedRatio = if (budgetBase > 0) ((totalFixed + totalVar) / budgetBase).coerceIn(0.0, 1.0) else 0.0
                     val usedPct = (usedRatio * 100).toInt()
                     Spacer(Modifier.height(10.dp))
-                    LinearProgressIndicator(progress = { usedRatio }, modifier = Modifier.fillMaxWidth().height(8.dp))
+                    LinearProgressIndicator(progress = { usedRatio.toFloat() }, modifier = Modifier.fillMaxWidth().height(8.dp))
                     Spacer(Modifier.height(4.dp))
                     Text("$usedPct% del budget utilizzato", fontSize = 12.sp, color = if (usedPct >= 90) Color(0xFFDC2626) else if (usedPct >= 80) Color(0xFFD97706) else Color(0xFF64748B))
                     Spacer(Modifier.height(8.dp))
