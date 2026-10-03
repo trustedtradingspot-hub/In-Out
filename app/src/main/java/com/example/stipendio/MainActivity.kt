@@ -427,7 +427,6 @@ fun App(
             )
         }
     }
-}
 
     if (backupText != null) {
         AlertDialog(
