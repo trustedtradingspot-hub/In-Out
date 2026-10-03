@@ -67,12 +67,21 @@ class QuickAddWidget : AppWidgetProvider() {
                 }.toString()
 
                 val amount = store.remaining(month)
+                val salary = store.actual()[month] ?: effectiveSalary(store.salaryHist(), month)
+                val extraIncome = store.incomes(month).sumOf { it.amount }
+                val base = salary + extraIncome
+                val remainingPct = if (base > 0.0) {
+                    ((amount / base) * 100.0).toInt().coerceIn(0, 100)
+                } else 0
+
                 val formatted = NumberFormat
                     .getCurrencyInstance(Locale.ITALY)
                     .format(amount)
 
                 views.setTextViewText(R.id.amount, formatted)
-                views.setTextViewText(R.id.widget_subtitle, "Disponibilità")
+                views.setTextViewText(R.id.widget_subtitle, "Stipendio rimanente")
+                views.setProgressBar(R.id.widget_progress, 100, remainingPct, false)
+                views.setTextViewText(R.id.widget_percent, "$remainingPct%")
             } catch (_: Exception) {
                 // Never let a malformed/old preference block the widget from loading.
                 views.setTextViewText(R.id.amount, "Apri l'app")
