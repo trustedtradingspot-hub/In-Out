@@ -388,43 +388,74 @@ fun App(
             val usedRatio = if (budgetBase > 0) ((totalFixed + totalVar) / budgetBase).coerceIn(0.0, 1.0) else 0.0
             val usedPct = (usedRatio * 100).toInt()
             val progressColor = if (usedPct >= 90) Color(0xFFEF4444) else if (usedPct >= 80) Color(0xFFF59E0B) else Color(0xFF1683E8)
-            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), color = Color(0xFF0B5FC7), shadowElevation = 7.dp, border = BorderStroke(1.dp, Color(0xFF3D8BE8))) {
-                Column(Modifier.padding(14.dp)) {
-                    Text("Buongiorno!", color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
-                    Text("Il tuo budget, in sintesi", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(12.dp))
-                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-                        Column(Modifier.padding(18.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("SALDO DISPONIBILE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
-                                    Text(eur.format(left), fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, color = if (left >= 0) Color(0xFF123B6D) else Color(0xFFDC2626))
-                                }
-                                Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFEAF2FF)) {
-                                    Text("$usedPct%", modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = progressColor)
-                                }
+            Surface(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = Color.White,
+                shadowElevation = 3.dp,
+                border = BorderStroke(1.dp, Color(0xFFD7E3F2))
+            ) {
+                Column(Modifier.padding(17.dp)) {
+                    Text("IL TUO BUDGET", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
+                    Spacer(Modifier.height(5.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Disponibilità", fontSize = 12.sp, color = Color(0xFF64748B))
+                            Text(
+                                eur.format(left),
+                                fontSize = 31.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (left >= 0) Color(0xFF123B6D) else Color(0xFFDC2626)
+                            )
+                        }
+                        Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFEAF2FF)) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)) {
+                                Text("$usedPct%", fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = progressColor)
+                                Text("utilizzato", fontSize = 9.sp, color = Color(0xFF64748B))
                             }
-                            Spacer(Modifier.height(10.dp))
-                            LinearProgressIndicator(progress = { usedRatio.toFloat() }, modifier = Modifier.fillMaxWidth().height(8.dp), color = progressColor, trackColor = Color(0xFFE7EDF5))
-                            Spacer(Modifier.height(6.dp))
-                            Text(if (usedPct >= 80) "Attenzione: hai superato l'80% del budget" else "$usedPct% dello stipendio mensile", fontSize = 11.sp, fontWeight = if (usedPct >= 80) FontWeight.SemiBold else FontWeight.Normal, color = if (usedPct >= 80) progressColor else Color(0xFF64748B))
                         }
                     }
-                }
-            }
-        }
-        item {
-            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 2.dp, border = BorderStroke(1.dp, Color(0xFFD7E3F2))) {
-                Column(Modifier.padding(16.dp)) {
+                    Spacer(Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { usedRatio.toFloat() },
+                        modifier = Modifier.fillMaxWidth().height(7.dp),
+                        color = progressColor,
+                        trackColor = Color(0xFFE7EDF5)
+                    )
+                    Spacer(Modifier.height(5.dp))
+                    Text(
+                        if (usedPct >= 80) "Attenzione: hai superato l'80% del budget"
+                        else "$usedPct% del budget già utilizzato",
+                        fontSize = 10.sp,
+                        fontWeight = if (usedPct >= 80) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (usedPct >= 80) progressColor else Color(0xFF64748B)
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    HorizontalDivider(color = Color(0xFFE6ECF4))
+                    Spacer(Modifier.height(12.dp))
                     Text("IL TUO RITMO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
                     Spacer(Modifier.height(8.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        MiniKpi("Al giorno", eur.format(dailyBudget), Color(0xFF2563EB), Modifier.weight(1f))
-                        MiniKpi("Giorni", "" + daysLeft, Color(0xFF16A34A), Modifier.weight(1f))
-                        MiniKpi("Previsione", eur.format(forecast), if (forecast >= 0) Color(0xFF16A34A) else Color(0xFFDC2626), Modifier.weight(1f))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1.25f)) {
+                            Text("Puoi spendere al giorno", fontSize = 11.sp, color = Color(0xFF64748B))
+                            Text(eur.format(dailyBudget), fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF2563EB))
+                        }
+                        Column(Modifier.weight(0.8f)) {
+                            Text("Giorni", fontSize = 10.sp, color = Color(0xFF64748B))
+                            Text("$daysLeft", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF16A34A))
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("Previsione", fontSize = 10.sp, color = Color(0xFF64748B))
+                            Text(eur.format(forecast), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = if (forecast >= 0) Color(0xFF16A34A) else Color(0xFFDC2626), maxLines = 1)
+                        }
                     }
                     Spacer(Modifier.height(7.dp))
-                    Text(if (forecast >= 0) "Ritmo attuale: previsione positiva a fine periodo." else "Attenzione: con il ritmo attuale la previsione è negativa.", fontSize = 11.sp, color = if (forecast >= 0) Color(0xFF475569) else Color(0xFFDC2626))
+                    Text(
+                        if (forecast >= 0) "Se mantieni questo ritmo, arriverai a fine periodo con " + eur.format(forecast) + "."
+                        else "Attenzione: con il ritmo attuale rischi di esaurire il budget.",
+                        fontSize = 10.sp,
+                        color = if (forecast >= 0) Color(0xFF475569) else Color(0xFFDC2626)
+                    )
                 }
             }
         }
