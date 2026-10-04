@@ -424,7 +424,13 @@ fun App(
             val remainingPct = (remainingRatio * 100).toInt()
             val usedRatio = 1.0 - remainingRatio
             val usedPct = (usedRatio * 100).toInt()
-            val remainingColor = Color(0xFF1683E8)
+            val daysInCycle = java.time.temporal.ChronoUnit.DAYS.between(
+                month.atDay(startDay.coerceIn(1, 28)),
+                cycleEnd(month, startDay)
+            ) + 1
+            val daysColor = remainingBudgetColor(
+                ((daysLeft.toDouble() / daysInCycle.coerceAtLeast(1).toDouble()) * 100).toInt()
+            )
             Surface(
                 Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -442,7 +448,7 @@ fun App(
                                 eur.format(left),
                                 fontSize = 34.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = if (left >= 0) Color.White else Color(0xFFFFD7D7)
+                                color = remainingBudgetColor(remainingPct)
                             )
                             Spacer(Modifier.height(3.dp))
                             Text(
@@ -467,11 +473,11 @@ fun App(
                         }
                         Column(Modifier.weight(0.8f)) {
                             Text("Giorni", fontSize = 10.sp, color = Color.White.copy(alpha = 0.78f))
-                            Text("$daysLeft", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                            Text("$daysLeft", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = daysColor)
                         }
                         Column(Modifier.weight(1f)) {
                             Text("Previsione", fontSize = 10.sp, color = Color.White.copy(alpha = 0.78f))
-                            Text(eur.format(forecast), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = if (forecast >= 0) Color.White else Color(0xFFFFD7D7), maxLines = 1)
+                            Text(eur.format(forecast), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = if (forecast >= 0) Color(0xFF4ADE80) else Color(0xFFFF6B6B), maxLines = 1)
                         }
                     }
                     Spacer(Modifier.height(7.dp))
