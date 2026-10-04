@@ -14,6 +14,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
@@ -385,68 +386,58 @@ fun App(
         }
         item {
             val budgetBase = salary + totalIncome
-            val usedRatio = if (budgetBase > 0) ((totalFixed + totalVar) / budgetBase).coerceIn(0.0, 1.0) else 0.0
+            val remainingRatio = if (budgetBase > 0) (left / budgetBase).coerceIn(0.0, 1.0) else 0.0
+            val remainingPct = (remainingRatio * 100).toInt()
+            val usedRatio = 1.0 - remainingRatio
             val usedPct = (usedRatio * 100).toInt()
-            val progressColor = if (usedPct >= 90) Color(0xFFEF4444) else if (usedPct >= 80) Color(0xFFF59E0B) else Color(0xFF1683E8)
+            val remainingColor = Color(0xFF1683E8)
             Surface(
                 Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
-                color = Color.White,
-                shadowElevation = 3.dp,
-                border = BorderStroke(1.dp, Color(0xFFD7E3F2))
+                color = Color(0xFF0B5FC7),
+                shadowElevation = 7.dp,
+                border = BorderStroke(1.dp, Color(0xFF3D8BE8))
             ) {
                 Column(Modifier.padding(17.dp)) {
-                    Text("IL TUO BUDGET", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
+                    Text("IL TUO BUDGET", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.82f))
                     Spacer(Modifier.height(5.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Disponibilità", fontSize = 12.sp, color = Color(0xFF64748B))
+                            Text("Disponibilità", fontSize = 12.sp, color = Color.White.copy(alpha = 0.82f))
                             Text(
                                 eur.format(left),
-                                fontSize = 31.sp,
+                                fontSize = 34.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = if (left >= 0) Color(0xFF123B6D) else Color(0xFFDC2626)
+                                color = if (left >= 0) Color.White else Color(0xFFFFD7D7)
+                            )
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                "$usedPct% del budget utilizzato",
+                                fontSize = 10.sp,
+                                fontWeight = if (usedPct >= 80) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (usedPct >= 80) Color(0xFFFFE08A) else Color.White.copy(alpha = 0.76f)
                             )
                         }
-                        Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFEAF2FF)) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)) {
-                                Text("$usedPct%", fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = progressColor)
-                                Text("utilizzato", fontSize = 9.sp, color = Color(0xFF64748B))
-                            }
-                        }
+                        Spacer(Modifier.width(12.dp))
+                        BudgetRemainingRing(remainingPct = remainingPct, modifier = Modifier.size(92.dp))
                     }
-                    Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { usedRatio.toFloat() },
-                        modifier = Modifier.fillMaxWidth().height(7.dp),
-                        color = progressColor,
-                        trackColor = Color(0xFFE7EDF5)
-                    )
-                    Spacer(Modifier.height(5.dp))
-                    Text(
-                        if (usedPct >= 80) "Attenzione: hai superato l'80% del budget"
-                        else "$usedPct% del budget già utilizzato",
-                        fontSize = 10.sp,
-                        fontWeight = if (usedPct >= 80) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (usedPct >= 80) progressColor else Color(0xFF64748B)
-                    )
                     Spacer(Modifier.height(14.dp))
-                    HorizontalDivider(color = Color(0xFFE6ECF4))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.20f))
                     Spacer(Modifier.height(12.dp))
-                    Text("IL TUO RITMO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
+                    Text("IL TUO RITMO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.82f))
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1.25f)) {
-                            Text("Puoi spendere al giorno", fontSize = 11.sp, color = Color(0xFF64748B))
-                            Text(eur.format(dailyBudget), fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF2563EB))
+                            Text("Puoi spendere al giorno", fontSize = 11.sp, color = Color.White.copy(alpha = 0.78f))
+                            Text(eur.format(dailyBudget), fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                         }
                         Column(Modifier.weight(0.8f)) {
-                            Text("Giorni", fontSize = 10.sp, color = Color(0xFF64748B))
-                            Text("$daysLeft", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF16A34A))
+                            Text("Giorni", fontSize = 10.sp, color = Color.White.copy(alpha = 0.78f))
+                            Text("$daysLeft", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text("Previsione", fontSize = 10.sp, color = Color(0xFF64748B))
-                            Text(eur.format(forecast), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = if (forecast >= 0) Color(0xFF16A34A) else Color(0xFFDC2626), maxLines = 1)
+                            Text("Previsione", fontSize = 10.sp, color = Color.White.copy(alpha = 0.78f))
+                            Text(eur.format(forecast), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = if (forecast >= 0) Color.White else Color(0xFFFFD7D7), maxLines = 1)
                         }
                     }
                     Spacer(Modifier.height(7.dp))
@@ -454,7 +445,7 @@ fun App(
                         if (forecast >= 0) "Se mantieni questo ritmo, arriverai a fine periodo con " + eur.format(forecast) + "."
                         else "Attenzione: con il ritmo attuale rischi di esaurire il budget.",
                         fontSize = 10.sp,
-                        color = if (forecast >= 0) Color(0xFF475569) else Color(0xFFDC2626)
+                        color = if (forecast >= 0) Color.White.copy(alpha = 0.82f) else Color(0xFFFFD7D7)
                     )
                 }
             }
@@ -723,6 +714,44 @@ fun Row2(item: Item, amountColor: Color = Color.Unspecified, onClick: () -> Unit
         }
     }
 }
+@Composable
+fun BudgetRemainingRing(remainingPct: Int, modifier: Modifier = Modifier) {
+    val pct = remainingPct.coerceIn(0, 100)
+    val sweep = 360f * pct / 100f
+    val gradient = Brush.sweepGradient(
+        listOf(
+            Color(0xFF1683E8),
+            Color(0xFF22C55E),
+            Color(0xFFEF4444),
+            Color(0xFF1683E8)
+        )
+    )
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 10.dp.toPx()
+            val inset = stroke / 2f
+            drawArc(
+                color = Color.White.copy(alpha = 0.18f),
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke)
+            )
+            drawArc(
+                brush = gradient,
+                startAngle = -90f,
+                sweepAngle = sweep,
+                useCenter = false,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke)
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("$pct%", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+            Text("rimanenza", fontSize = 8.sp, color = Color.White.copy(alpha = 0.82f))
+        }
+    }
+}
+
 @Composable
 fun MiniKpi(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
     Surface(modifier, shape = RoundedCornerShape(14.dp), color = Color(0xFFF6F9FD), border = BorderStroke(1.dp, Color(0xFFE1E9F4))) {
