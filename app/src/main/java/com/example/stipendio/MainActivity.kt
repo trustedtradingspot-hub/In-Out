@@ -353,7 +353,11 @@ fun App(
     val forecast = left - avgDailyVariable * daysLeft
 
     fun addFixed(n: String, a: Double, category: String) {
+        val budgetBaseNow = salary + totalIncome
+        val beforeUsedPct = if (budgetBaseNow > 0) (((totalFixed + totalVar) / budgetBaseNow) * 100).toInt() else 0
         fixedAll.add(Fixed(UUID.randomUUID().toString(), n, a, ms, null, category)); store.saveFixed(fixedAll)
+        val afterUsedPct = if (budgetBaseNow > 0) ((((totalFixed + a) + totalVar) / budgetBaseNow) * 100).toInt() else 0
+        checkBudgetAlerts(store.context(), ms, beforeUsedPct, afterUsedPct, budgetBaseNow - totalFixed - a - totalVar)
     }
     fun deleteFixed(f: Fixed) {
         val i = fixedAll.indexOf(f)
@@ -641,8 +645,12 @@ fun App(
                 deleteText = "Elimina",
                 onDismiss = { editingExpense = null },
                 onSave = { item ->
+                    val budgetBaseNow = salary + totalIncome
+                    val beforeUsedPct = if (budgetBaseNow > 0) (((totalFixed + expenses.sumOf { it.amount }) / budgetBaseNow) * 100).toInt() else 0
                     expenses[index] = item
                     store.saveExpenses(ms, expenses)
+                    val afterUsedPct = if (budgetBaseNow > 0) (((totalFixed + expenses.sumOf { it.amount }) / budgetBaseNow) * 100).toInt() else 0
+                    checkBudgetAlerts(store.context(), ms, beforeUsedPct, afterUsedPct, budgetBaseNow - totalFixed - expenses.sumOf { it.amount })
                     editingExpense = null
                 },
                 onDelete = {
@@ -795,22 +803,33 @@ fun Row2(item: Item, amountColor: Color = Color.Unspecified, onClick: () -> Unit
         }
     }
 }
+fun remainingBudgetColor(pct: Int): Color {
+    val p = pct.coerceIn(0, 100)
+    return if (p <= 50) {
+        val t = p / 50f
+        Color(
+            red = (0x16 + (0x22 - 0x16) * t).toInt(),
+            green = (0x83 + (0xC5 - 0x83) * t).toInt(),
+            blue = (0xE8 + (0x5E - 0xE8) * t).toInt()
+        )
+    } else {
+        val t = (p - 50) / 50f
+        Color(
+            red = (0x22 + (0xEF - 0x22) * t).toInt(),
+            green = (0xC5 + (0x44 - 0xC5) * t).toInt(),
+            blue = (0x5E + (0x44 - 0x5E) * t).toInt()
+        )
+    }
+}
+
 @Composable
 fun BudgetRemainingRing(remainingPct: Int, modifier: Modifier = Modifier) {
     val pct = remainingPct.coerceIn(0, 100)
     val sweep = 360f * pct / 100f
-    val gradient = Brush.sweepGradient(
-        listOf(
-            Color(0xFF1683E8),
-            Color(0xFF22C55E),
-            Color(0xFFEF4444),
-            Color(0xFF1683E8)
-        )
-    )
+    val ringColor = remainingBudgetColor(pct)
     Box(modifier, contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val stroke = 10.dp.toPx()
-            val inset = stroke / 2f
             drawArc(
                 color = Color.White.copy(alpha = 0.18f),
                 startAngle = -90f,
@@ -819,7 +838,7 @@ fun BudgetRemainingRing(remainingPct: Int, modifier: Modifier = Modifier) {
                 style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke)
             )
             drawArc(
-                brush = gradient,
+                color = ringColor,
                 startAngle = -90f,
                 sweepAngle = sweep,
                 useCenter = false,
