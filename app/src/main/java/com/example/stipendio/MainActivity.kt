@@ -195,8 +195,23 @@ class Store(private val ctx: Context) {
 }
 
 private const val BUDGET_CHANNEL = "budget_alerts"
+private const val ALERT_PREFS = "budget"
+private val ALERT_THRESHOLDS = listOf(80, 90, 95)
 
-fun notifyBudgetAlert(ctx: Context, usedPercent: Int, remaining: Double) {
+fun budgetAlertThresholds(ctx: Context): Set<Int> =
+    ctx.getSharedPreferences(ALERT_PREFS, Context.MODE_PRIVATE)
+        .getStringSet("alert_thresholds", setOf("80", "90", "95"))
+        ?.mapNotNull { it.toIntOrNull() }
+        ?.toSet() ?: setOf(80, 90, 95)
+
+fun setBudgetAlertThreshold(ctx: Context, threshold: Int, enabled: Boolean) {
+    val p = ctx.getSharedPreferences(ALERT_PREFS, Context.MODE_PRIVATE)
+    val current = budgetAlertThresholds(ctx).toMutableSet()
+    if (enabled) current.add(threshold) else current.remove(threshold)
+    p.edit().putStringSet("alert_thresholds", current.map { it.toString() }.toSet()).apply()
+}
+
+fun notifyBudgetAlert(ctx: Context, usedPercent: Int, remaining: Double, threshold: Int = usedPercent) {
     if (android.os.Build.VERSION.SDK_INT >= 33 &&
         ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return
     val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -212,7 +227,21 @@ fun notifyBudgetAlert(ctx: Context, usedPercent: Int, remaining: Double) {
         .setPriority(NotificationCompat.PRIORITY_DEFAULT)
         .setAutoCancel(true)
         .build()
-    nm.notify((System.currentTimeMillis() and 0x7fffffff).toInt(), n)
+    nm.notify((threshold * 100000 + (System.currentTimeMillis() and 0x7fff)).toInt(), n)
+}
+
+fun checkBudgetAlerts(ctx: Context, cycle: String, previousUsedPercent: Int, currentUsedPercent: Int, remaining: Double) {
+    if (currentUsedPercent <= previousUsedPercent) return
+    val enabled = budgetAlertThresholds(ctx)
+    val p = ctx.getSharedPreferences(ALERT_PREFS, Context.MODE_PRIVATE)
+    ALERT_THRESHOLDS.filter { it in enabled && previousUsedPercent < it && currentUsedPercent >= it }
+        .forEach { threshold ->
+            val key = "alert_sent_" + cycle + "_" + threshold
+            if (!p.getBoolean(key, false)) {
+                notifyBudgetAlert(ctx, threshold, remaining, threshold)
+                p.edit().putBoolean(key, true).apply()
+            }
+        }
 }
 
 class MainActivity : ComponentActivity() {
@@ -303,6 +332,7 @@ fun App(
     var editingExpense by remember { mutableStateOf<Int?>(null) }
     var editingIncome by remember { mutableStateOf<Int?>(null) }
     var selectedNav by remember { mutableIntStateOf(0) }
+    val appContext = store.context()
 
     LaunchedEffect(quickAdd) {
         if (quickAdd) { month = currentCycle(startDay); dialog = "exp"; onQuickConsumed() }
@@ -378,7 +408,7 @@ fun App(
                         }
                         Spacer(Modifier.width(6.dp))
                         Surface(shape = RoundedCornerShape(13.dp), color = Color(0xFFF4F7FC), border = BorderStroke(1.dp, Color(0xFFE0E8F3))) {
-                            TextButton(onClick = { dialog = "day" }, contentPadding = PaddingValues(horizontal = 11.dp, vertical = 0.dp)) { Text("⚙", fontSize = 17.sp) }
+                            TextButton(onClick = { dialog = "settings" }, contentPadding = PaddingValues(horizontal = 11.dp, vertical = 0.dp)) { Text("⚙", fontSize = 17.sp) }
                         }
                     }
                 }
@@ -513,10 +543,16 @@ fun App(
     }
 
     when (dialog) {
-        "day" -> InputDialog("Giorno di inizio ciclo", false, { dialog = null }, label = "Giorno (1-28)") { _, a, _, _ ->
-            val d = a.toInt().coerceIn(1, 28)
-            startDay = d; store.saveStartDay(d); month = currentCycle(d); dialog = null
-        }
+        "settings" -> BudgetSettingsDialog(
+            startDay = startDay,
+            onStartDayChange = { d ->
+                startDay = d.coerceIn(1, 28)
+                store.saveStartDay(startDay)
+                month = currentCycle(startDay)
+            },
+            context = appContext,
+            onDismiss = { dialog = null }
+        )
         "actual" -> InputDialog("Stipendio effettivo di questo mese", false, { dialog = null }) { _, a, _, _ ->
             actualHist[ms] = a; store.saveActual(actualHist); dialog = null
         }
@@ -527,10 +563,11 @@ fun App(
             addFixed(n, a, category); dialog = null
         }
         "exp" -> InputDialog("Nuova spesa", true, { dialog = null }) { n, a, date, category ->
-            expenses.add(0, Item(n, a, date, category)); store.saveExpenses(ms, expenses)
             val budgetBaseNow = salary + totalIncome
+            val beforeUsedPct = if (budgetBaseNow > 0) (((totalFixed + expenses.sumOf { it.amount }) / budgetBaseNow) * 100).toInt() else 0
+            expenses.add(0, Item(n, a, date, category)); store.saveExpenses(ms, expenses)
             val usedPctNow = if (budgetBaseNow > 0) (((totalFixed + expenses.sumOf { it.amount }) / budgetBaseNow) * 100).toInt() else 0
-            if (usedPctNow >= 80) notifyBudgetAlert(store.context(), usedPctNow, budgetBaseNow - totalFixed - expenses.sumOf { it.amount })
+            checkBudgetAlerts(store.context(), ms, beforeUsedPct, usedPctNow, budgetBaseNow - totalFixed - expenses.sumOf { it.amount })
             dialog = null
         }
         "income" -> InputDialog("Nuovo introito", true, { dialog = null }, nameLabel = "Descrizione") { n, a, date, category ->
@@ -646,6 +683,50 @@ fun App(
             confirmButton = { TextButton(onClick = onDismissBackupMessage) { Text("OK") } }
         )
     }
+}
+
+@Composable
+fun BudgetSettingsDialog(
+    startDay: Int,
+    onStartDayChange: (Int) -> Unit,
+    context: Context,
+    onDismiss: () -> Unit
+) {
+    var day by remember(startDay) { mutableStateOf(startDay.toString()) }
+    var enabled by remember { mutableStateOf(budgetAlertThresholds(context)) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Impostazioni budget") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Ciclo stipendio", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
+                OutlinedTextField(day, { day = it.filter(Char::isDigit).take(2) }, label = { Text("Giorno di inizio ciclo (1-28)") }, singleLine = true)
+                HorizontalDivider()
+                Text("Notifiche consumo", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
+                Text("Ricevi un avviso quando raggiungi la percentuale scelta del budget.", fontSize = 11.sp, color = Color(0xFF64748B))
+                ALERT_THRESHOLDS.forEach { threshold ->
+                    Row(Modifier.fillMaxWidth().clickable {
+                        val next = enabled.toMutableSet().also { if (threshold in it) it.remove(threshold) else it.add(threshold) }
+                        setBudgetAlertThreshold(context, threshold, threshold in next)
+                        enabled = next
+                    }, verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = threshold in enabled, onCheckedChange = { checked ->
+                            setBudgetAlertThreshold(context, threshold, checked)
+                            enabled = enabled.toMutableSet().also { if (checked) it.add(threshold) else it.remove(threshold) }
+                        })
+                        Text("$threshold% del budget utilizzato", fontSize = 14.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onStartDayChange(day.toIntOrNull()?.coerceIn(1, 28) ?: startDay)
+                onDismiss()
+            }) { Text("Salva") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } }
+    )
 }
 
 @Composable
