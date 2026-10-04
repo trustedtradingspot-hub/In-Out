@@ -363,7 +363,7 @@ fun App(
                         Column(Modifier.weight(1f)) {
                             Text("MyBudget+", fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0D4FA8), maxLines = 1)
                             Text("Il tuo budget, sempre sotto controllo", fontSize = 10.sp, color = Color(0xFF64748B), maxLines = 1)
-                            Text("${month.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.ITALY).replaceFirstChar { it.uppercase() }} ${month.year}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E5FBF))
+                            Text("${month.plusMonths(1).month.getDisplayName(java.time.format.TextStyle.FULL, Locale.ITALY).replaceFirstChar { it.uppercase() }} ${month.plusMonths(1).year}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E5FBF))
                             Text(cycleLabel(month, startDay), fontSize = 9.sp, color = Color(0xFF64748B))
                         }
                     }
